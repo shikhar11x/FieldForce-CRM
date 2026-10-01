@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/task_enums.dart';
+import '../../data/models/task_models.dart';
 import '../theme/app_colors.dart';
+import 'datetime_extensions.dart';
 
 extension TaskPriorityStyle on TaskPriority {
   Color get color => switch (this) {
@@ -28,4 +30,10 @@ extension VisitStatusStyle on VisitStatus {
         VisitStatus.completed => AppColors.success,
         VisitStatus.cancelled => AppColors.lightTextSecondary,
       };
+}
+
+extension TaskItemLabels on TaskItem {
+  /// e.g. "Today, 2:00 PM".
+  String dueLabel(BuildContext context) =>
+      '${due.dayLabel}, ${TimeOfDay.fromDateTime(due).format(context)}';
 }

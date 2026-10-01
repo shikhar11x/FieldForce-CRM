@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 
 import '../../features/customers/screens/customer_detail_screen.dart';
 import '../../features/customers/screens/customers_screen.dart';
-
+import '../../features/tasks/screens/task_detail_screen.dart';
+import '../../features/tasks/screens/task_form_screen.dart';
+import '../../features/tasks/screens/tasks_screen.dart';
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -91,6 +93,7 @@ Widget _screenFor(NavItem item) => switch (item.path) {
       '/admin/customers' ||
       '/employee/customers' =>
         const CustomersScreen(),
+      '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
       _ => PlaceholderScreen(title: item.label, icon: item.selectedIcon),
     };
 
@@ -103,6 +106,27 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
             builder: (context, state) => CustomerDetailScreen(
               customerId: state.pathParameters['id']!,
             ),
+          ),
+        ],
+      // 'new' must be declared before ':id' so it isn't read as an id.
+      '/manager/tasks' || '/employee/tasks' => <RouteBase>[
+          GoRoute(
+            path: 'new',
+            builder: (context, state) => const TaskFormScreen(),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => TaskDetailScreen(
+              taskId: state.pathParameters['id']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) => TaskFormScreen(
+                  taskId: state.pathParameters['id'],
+                ),
+              ),
+            ],
           ),
         ],
       _ => const <RouteBase>[],
