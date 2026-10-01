@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/customers/screens/customer_detail_screen.dart';
+import '../../features/customers/screens/customers_screen.dart';
+
 import '../../data/models/user_role.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -60,7 +63,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(router.dispose);
   return router;
 });
-
 StatefulShellRoute _shellFor(UserRole role) {
   final items = roleNavigation[role]!;
   return StatefulShellRoute.indexedStack(
@@ -73,6 +75,7 @@ StatefulShellRoute _shellFor(UserRole role) {
             GoRoute(
               path: item.path,
               builder: (context, state) => _screenFor(item),
+              routes: _subRoutesFor(item),
             ),
           ],
         ),
@@ -80,9 +83,27 @@ StatefulShellRoute _shellFor(UserRole role) {
   );
 }
 
+/// Real screens replace placeholders here as each step lands.
 Widget _screenFor(NavItem item) => switch (item.path) {
-  '/admin/dashboard' => const AdminDashboardScreen(),
-  '/manager/dashboard' => const ManagerDashboardScreen(),
-  '/employee/home' => const EmployeeHomeScreen(),
-  _ => PlaceholderScreen(title: item.label, icon: item.selectedIcon),
-};
+      '/admin/dashboard' => const AdminDashboardScreen(),
+      '/manager/dashboard' => const ManagerDashboardScreen(),
+      '/employee/home' => const EmployeeHomeScreen(),
+      '/admin/customers' ||
+      '/employee/customers' =>
+        const CustomersScreen(),
+      _ => PlaceholderScreen(title: item.label, icon: item.selectedIcon),
+    };
+
+/// Detail routes nested under a tab, so the navigation bar stays visible
+/// and tapping the tab again returns to the list.
+List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
+      '/admin/customers' || '/employee/customers' => <RouteBase>[
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => CustomerDetailScreen(
+              customerId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      _ => const <RouteBase>[],
+    };
