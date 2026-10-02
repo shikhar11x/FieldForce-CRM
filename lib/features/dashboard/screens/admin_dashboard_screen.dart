@@ -103,18 +103,23 @@ class _DashboardContent extends StatelessWidget {
                         QuickAction(
               label: 'View Reports',
               icon: Icons.insights_rounded,
-              onTap: () => comingSoon('Reports'),
-            ),
+              onTap: () => context.push('/admin/reports'),            ),
                         QuickAction(
               label: 'Leads Pipeline',
               icon: Icons.filter_alt_rounded,
               onTap: () => context.push('/admin/leads'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'Attendance',
               icon: Icons.event_available_rounded,
               onTap: () => context.push('/admin/attendance'),
             ),
+            QuickAction(
+              label: 'Live Map',
+              icon: Icons.map_rounded,
+              onTap: () => context.push('/admin/maps'),
+            ),
+
           ],
         ).entrance(2),
         const SectionHeader(title: 'Analytics'),

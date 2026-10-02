@@ -120,7 +120,7 @@ class _EmployeeContent extends ConsumerWidget {
             QuickAction(
               label: 'Scan QR',
               icon: Icons.qr_code_scanner_rounded,
-              onTap: () => comingSoon('Scan QR'),
+              onTap: () => context.push('/employee/qr'),
             ),
             QuickAction(
               label: 'Add Customer',
@@ -132,7 +132,7 @@ class _EmployeeContent extends ConsumerWidget {
               icon: Icons.checklist_rounded,
               onTap: () => context.go('/employee/tasks'),
             ),
-                        QuickAction(
+            QuickAction(
               label: 'My Leads',
               icon: Icons.filter_alt_rounded,
               onTap: () => context.push('/employee/leads'),
@@ -147,7 +147,7 @@ class _EmployeeContent extends ConsumerWidget {
         SectionHeader(
           title: "Today's route",
           actionLabel: 'Open map',
-          onAction: () => comingSoon('Map'),
+          onAction: () => context.push('/employee/maps'),
         ),
         RouteSection(stops: data.route).entrance(4),
         SectionHeader(

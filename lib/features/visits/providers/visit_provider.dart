@@ -92,6 +92,24 @@ class VisitsNotifier extends AsyncNotifier<List<VisitItem>> {
     );
   }
 
+  /// Marks the visit as QR verified (idempotent).
+  Future<void> markQrVerified(VisitItem visit) {
+    if (visit.qrVerified) return Future<void>.value();
+    final now = DateTime.now();
+    return _persist(
+      visit.copyWith(
+        qrVerified: true,
+        events: [
+          ...visit.events,
+          VisitEvent(
+            type: VisitEventType.qrVerified,
+            title: 'QR code verified',
+            timestamp: now,
+          ),
+        ],
+      ),
+    );
+  }
   /// Phase 1: attaches a placeholder photo. Phase 2 uploads a real file.
   Future<void> addPhoto(VisitItem visit) {
     final now = DateTime.now();

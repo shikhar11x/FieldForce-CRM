@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -72,11 +73,12 @@ class _VisitActionPanelState extends ConsumerState<VisitActionPanel> {
   }
 
   void _scanQr() {
-    if (!_inProgress) {
-      context.showSnack(_blockedMessage);
+    final status = _visit.status;
+    if (status == VisitStatus.completed || status == VisitStatus.cancelled) {
+      context.showSnack('This visit is ${status.label.toLowerCase()}.');
       return;
     }
-    context.showSnack('QR scanning arrives in an upcoming step.');
+    context.push('/employee/qr');
   }
 
   @override
@@ -85,25 +87,22 @@ class _VisitActionPanelState extends ConsumerState<VisitActionPanel> {
 
     final Widget? primary = switch (_visit.status) {
       VisitStatus.scheduled => FilledButton.icon(
-          onPressed: _busy
-              ? null
-              : () => _run(
-                    () => _notifier.startVisit(_visit),
-                    'Visit started.',
-                  ),
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: const Text('Start Visit'),
-        ),
+        onPressed: _busy
+            ? null
+            : () => _run(() => _notifier.startVisit(_visit), 'Visit started.'),
+        icon: const Icon(Icons.play_arrow_rounded),
+        label: const Text('Start Visit'),
+      ),
       VisitStatus.started => FilledButton.icon(
-          onPressed: _busy
-              ? null
-              : () => _run(
-                    () => _notifier.completeVisit(_visit),
-                    'Visit completed.',
-                  ),
-          icon: const Icon(Icons.check_rounded),
-          label: const Text('Complete Visit'),
-        ),
+        onPressed: _busy
+            ? null
+            : () => _run(
+                () => _notifier.completeVisit(_visit),
+                'Visit completed.',
+              ),
+        icon: const Icon(Icons.check_rounded),
+        label: const Text('Complete Visit'),
+      ),
       _ => null,
     };
 

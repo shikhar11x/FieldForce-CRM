@@ -1,6 +1,16 @@
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 extension TimeAgo on DateTime {
@@ -16,12 +26,17 @@ extension TimeAgo on DateTime {
 extension DateLabels on DateTime {
   String get shortDate => '$day ${_months[month - 1]} $year';
 
+  /// e.g. "12 Sep".
+  String get dayMonth => '$day ${_months[month - 1]}';
+
   /// "Today", "Tomorrow", "Yesterday", otherwise a short date.
   String get dayLabel {
     final now = DateTime.now();
-    final diff = DateTime.utc(year, month, day)
-        .difference(DateTime.utc(now.year, now.month, now.day))
-        .inDays;
+    final diff = DateTime.utc(
+      year,
+      month,
+      day,
+    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
     return switch (diff) {
       0 => 'Today',
       1 => 'Tomorrow',

@@ -76,10 +76,20 @@ class _ManagerContent extends StatelessWidget {
               icon: Icons.place_rounded,
               onTap: () => context.go('/manager/visits'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'Attendance',
               icon: Icons.event_available_rounded,
               onTap: () => context.push('/manager/attendance'),
+            ),
+            QuickAction(
+              label: 'Team Map',
+              icon: Icons.map_rounded,
+              onTap: () => context.push('/manager/maps'),
+            ),
+            QuickAction(
+              label: 'Reports',
+              icon: Icons.insights_rounded,
+              onTap: () => context.go('/manager/reports'),
             ),
           ],
         ).entrance(2),

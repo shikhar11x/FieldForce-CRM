@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/reports/screens/reports_screen.dart';
+import '../../features/maps/screens/map_screen.dart';
+import '../../features/qr/screens/qr_result_screen.dart';
+import '../../features/qr/screens/scan_qr_screen.dart';
+
 import '../../features/attendance/screens/attendance_detail_screen.dart';
 import '../../features/attendance/screens/attendance_screen.dart';
 import '../../features/visits/screens/visit_detail_screen.dart';
@@ -68,6 +73,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       for (final role in UserRole.values) _shellFor(role),
       for (final role in UserRole.values) _leadRoutesFor(role),
       for (final role in UserRole.values) _attendanceRoutesFor(role),
+      for (final role in UserRole.values) _mapRoutesFor(role),
+      _qrRoutes(),
+      _adminReportsRoute(),
     ],
   );
 
@@ -101,6 +109,7 @@ Widget _screenFor(NavItem item) => switch (item.path) {
   '/employee/home' => const EmployeeHomeScreen(),
   '/admin/customers' || '/employee/customers' => const CustomersScreen(),
   '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
+  '/manager/reports' => const ReportsScreen(),
   '/admin/visits' ||
   '/manager/visits' ||
   '/employee/visits' => const VisitsScreen(),
@@ -167,6 +176,7 @@ GoRoute _leadRoutesFor(UserRole role) {
     ],
   );
 }
+
 /// Attendance isn't a bottom-nav tab in the spec, so it opens as
 /// full-screen pages above the shell (reached from dashboard quick actions).
 GoRoute _attendanceRoutesFor(UserRole role) {
@@ -176,10 +186,40 @@ GoRoute _attendanceRoutesFor(UserRole role) {
     routes: [
       GoRoute(
         path: ':id',
-        builder: (context, state) => AttendanceDetailScreen(
-          employeeId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) =>
+            AttendanceDetailScreen(employeeId: state.pathParameters['id']!),
       ),
     ],
+  );
+}
+
+/// Map opens as a full-screen page above the shell for every role.
+GoRoute _mapRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/maps',
+    builder: (context, state) => const MapScreen(),
+  );
+}
+
+/// QR scanning is an employee-only flow: scan, then the result.
+GoRoute _qrRoutes() {
+  return GoRoute(
+    path: '/employee/qr',
+    builder: (context, state) => const ScanQrScreen(),
+    routes: [
+      GoRoute(
+        path: 'result',
+        builder: (context, state) => const QrResultScreen(),
+      ),
+    ],
+  );
+}
+
+/// Admin has no Reports tab (it will live under "More"), so it opens as a
+/// full-screen page from the dashboard. Managers use their Reports tab.
+GoRoute _adminReportsRoute() {
+  return GoRoute(
+    path: '/admin/reports',
+    builder: (context, state) => const ReportsScreen(),
   );
 }
