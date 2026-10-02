@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/extensions/context_extensions.dart';
+import '../../../core/routing/app_navigation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../data/models/app_user.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../auth/widgets/logout_dialog.dart';
+import '../../notifications/providers/notification_provider.dart';
 
-enum _MenuAction { theme, logout }
+enum _MenuAction { profile, settings, theme, logout }
 
 class DashboardHeader extends ConsumerWidget {
   const DashboardHeader({super.key, required this.user});
@@ -24,8 +26,9 @@ class DashboardHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final muted = theme.colorScheme.onSurfaceVariant;
+    final unread = ref.watch(unreadNotificationCountProvider);
 
     return Row(
       children: [
@@ -62,12 +65,13 @@ class DashboardHeader extends ConsumerWidget {
           ),
         ),
         Badge(
-          label: const Text('3'),
+          isLabelVisible: unread > 0,
+          label: Text(unread > 99 ? '99+' : '$unread'),
           child: IconButton(
             tooltip: 'Notifications',
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () =>
-                context.showSnack('Notifications arrive in an upcoming step.'),
+                context.push('${user.role.basePath}/notifications'),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -76,20 +80,48 @@ class DashboardHeader extends ConsumerWidget {
           offset: const Offset(0, 48),
           onSelected: (action) {
             switch (action) {
+              case _MenuAction.profile:
+                context.openProfile(user.role);
+              case _MenuAction.settings:
+                context.openSettings(user.role);
               case _MenuAction.theme:
-                ref.read(themeModeProvider.notifier).toggle();
+                ref.read(themeModeProvider.notifier).set(
+                      isDark ? ThemeMode.light : ThemeMode.dark,
+                    );
               case _MenuAction.logout:
-                ref.read(authProvider.notifier).logout();
+                confirmAndLogout(context, ref);
             }
           },
           itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: _MenuAction.profile,
+              child: Row(
+                children: [
+                  Icon(Icons.person_outline_rounded),
+                  SizedBox(width: AppSpacing.md),
+                  Text('Profile'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.settings,
+              child: Row(
+                children: [
+                  Icon(Icons.settings_outlined),
+                  SizedBox(width: AppSpacing.md),
+                  Text('Settings'),
+                ],
+              ),
+            ),
             PopupMenuItem(
               value: _MenuAction.theme,
               child: Row(
                 children: [
-                  Icon(isDark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined),
+                  Icon(
+                    isDark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                  ),
                   const SizedBox(width: AppSpacing.md),
                   Text(isDark ? 'Light theme' : 'Dark theme'),
                 ],

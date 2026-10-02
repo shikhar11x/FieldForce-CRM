@@ -10,6 +10,7 @@ class AppUser {
     required this.organization,
     required this.employeeId,
     required this.department,
+    required this.joiningDate,
   });
 
   final String id;
@@ -20,10 +21,26 @@ class AppUser {
   final String organization;
   final String employeeId;
   final String department;
+  final DateTime joiningDate;
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  /// Only the fields a user may edit themselves.
+  AppUser copyWith({String? email, String? phone}) {
+    return AppUser(
+      id: id,
+      name: name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role,
+      organization: organization,
+      employeeId: employeeId,
+      department: department,
+      joiningDate: joiningDate,
+    );
   }
 }

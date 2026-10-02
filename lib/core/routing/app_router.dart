@@ -3,10 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/profile/screens/change_password_screen.dart';
+import '../../features/profile/screens/edit_profile_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
+import '../../features/settings/screens/notification_settings_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 import '../../features/reports/screens/reports_screen.dart';
 import '../../features/maps/screens/map_screen.dart';
 import '../../features/qr/screens/qr_result_screen.dart';
 import '../../features/qr/screens/scan_qr_screen.dart';
+import '../../features/notifications/screens/notification_detail_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 
 import '../../features/attendance/screens/attendance_detail_screen.dart';
 import '../../features/attendance/screens/attendance_screen.dart';
@@ -76,6 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       for (final role in UserRole.values) _mapRoutesFor(role),
       _qrRoutes(),
       _adminReportsRoute(),
+      for (final role in UserRole.values) _notificationRoutesFor(role),
+      for (final role in const [UserRole.admin, UserRole.manager])
+        _profileRoutesFor(role),
+      for (final role in UserRole.values) _settingsRoutesFor(role),
     ],
   );
 
@@ -110,6 +121,7 @@ Widget _screenFor(NavItem item) => switch (item.path) {
   '/admin/customers' || '/employee/customers' => const CustomersScreen(),
   '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
   '/manager/reports' => const ReportsScreen(),
+  '/employee/profile' => const ProfileScreen(),
   '/admin/visits' ||
   '/manager/visits' ||
   '/employee/visits' => const VisitsScreen(),
@@ -149,6 +161,7 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
           VisitDetailScreen(visitId: state.pathParameters['id']!),
     ),
   ],
+  '/employee/profile' => _profileSubRoutes(),
   _ => const <RouteBase>[],
 };
 
@@ -221,5 +234,55 @@ GoRoute _adminReportsRoute() {
   return GoRoute(
     path: '/admin/reports',
     builder: (context, state) => const ReportsScreen(),
+  );
+}
+
+/// Notifications open from the dashboard bell as full-screen pages.
+GoRoute _notificationRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/notifications',
+    builder: (context, state) => const NotificationsScreen(),
+    routes: [
+      GoRoute(
+        path: ':id',
+        builder: (context, state) => NotificationDetailScreen(
+          notificationId: state.pathParameters['id']!,
+        ),
+      ),
+    ],
+  );
+}
+List<RouteBase> _profileSubRoutes() => <RouteBase>[
+      GoRoute(
+        path: 'edit',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: 'password',
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+    ];
+
+/// Employees have a Profile tab. Admin and Manager open Profile as a
+/// full-screen page from the avatar menu.
+GoRoute _profileRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/profile',
+    builder: (context, state) => const ProfileScreen(),
+    routes: _profileSubRoutes(),
+  );
+}
+
+/// Settings opens full screen for every role.
+GoRoute _settingsRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/settings',
+    builder: (context, state) => const SettingsScreen(),
+    routes: [
+      GoRoute(
+        path: 'notifications',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+    ],
   );
 }

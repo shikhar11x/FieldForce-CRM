@@ -13,5 +13,10 @@ class AuthException implements Exception {
 abstract class AuthRepository {
   Future<AppUser> login({required String email, required String password});
   Future<AppUser> loginAsDemo(UserRole role);
+  Future<AppUser> updateProfile(AppUser user);
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
   Future<void> logout();
 }

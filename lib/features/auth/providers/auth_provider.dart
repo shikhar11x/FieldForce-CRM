@@ -33,6 +33,31 @@ class AuthNotifier extends Notifier<AuthState> {
     return _run(() => _repo.loginAsDemo(role));
   }
 
+  /// Saves editable profile fields. Doesn't go through `_run`, because
+  /// that briefly clears the user and would bounce the app to Login.
+  Future<void> updateProfile({
+    required String email,
+    required String phone,
+  }) async {
+    final current = state.user;
+    if (current == null) return;
+
+    final saved = await _repo.updateProfile(
+      current.copyWith(email: email, phone: phone),
+    );
+    state = AuthState(user: saved);
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _repo.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
   Future<void> logout() async {
     await _repo.logout();
     state = const AuthState();

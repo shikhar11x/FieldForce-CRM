@@ -4,7 +4,7 @@ import '../models/user_role.dart';
 class MockUsers {
   const MockUsers._();
 
-  static const admin = AppUser(
+  static final admin = AppUser(
     id: 'u_admin',
     name: 'Aarav Mehta',
     email: 'admin@fieldforce.com',
@@ -13,9 +13,10 @@ class MockUsers {
     organization: 'Northwind Logistics',
     employeeId: 'FF-0001',
     department: 'Administration',
+    joiningDate: DateTime(2019, 4, 1),
   );
 
-  static const manager = AppUser(
+  static final manager = AppUser(
     id: 'u_manager',
     name: 'Priya Sharma',
     email: 'manager@fieldforce.com',
@@ -24,9 +25,10 @@ class MockUsers {
     organization: 'Northwind Logistics',
     employeeId: 'FF-0102',
     department: 'Regional Sales',
+    joiningDate: DateTime(2021, 6, 14),
   );
 
-  static const employee = AppUser(
+  static final employee = AppUser(
     id: 'u_employee',
     name: 'Rohan Verma',
     email: 'employee@fieldforce.com',
@@ -35,9 +37,10 @@ class MockUsers {
     organization: 'Northwind Logistics',
     employeeId: 'FF-0457',
     department: 'Field Sales',
+    joiningDate: DateTime(2023, 2, 6),
   );
 
-  static const all = [admin, manager, employee];
+  static final all = [admin, manager, employee];
 
   static AppUser byRole(UserRole role) =>
       all.firstWhere((u) => u.role == role);
