@@ -105,10 +105,15 @@ class _DashboardContent extends StatelessWidget {
               icon: Icons.insights_rounded,
               onTap: () => comingSoon('Reports'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'Leads Pipeline',
               icon: Icons.filter_alt_rounded,
               onTap: () => context.push('/admin/leads'),
+            ),
+            QuickAction(
+              label: 'Attendance',
+              icon: Icons.event_available_rounded,
+              onTap: () => context.push('/admin/attendance'),
             ),
           ],
         ).entrance(2),

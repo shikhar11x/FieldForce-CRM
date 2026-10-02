@@ -132,10 +132,15 @@ class _EmployeeContent extends ConsumerWidget {
               icon: Icons.checklist_rounded,
               onTap: () => context.go('/employee/tasks'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'My Leads',
               icon: Icons.filter_alt_rounded,
               onTap: () => context.push('/employee/leads'),
+            ),
+            QuickAction(
+              label: 'My Attendance',
+              icon: Icons.event_available_rounded,
+              onTap: () => context.push('/employee/attendance'),
             ),
           ],
         ).entrance(3),

@@ -71,10 +71,15 @@ class _ManagerContent extends StatelessWidget {
               icon: Icons.add_task_rounded,
               onTap: () => context.go('/manager/tasks/new'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'View Visits',
               icon: Icons.place_rounded,
               onTap: () => context.go('/manager/visits'),
+            ),
+            QuickAction(
+              label: 'Attendance',
+              icon: Icons.event_available_rounded,
+              onTap: () => context.push('/manager/attendance'),
             ),
           ],
         ).entrance(2),

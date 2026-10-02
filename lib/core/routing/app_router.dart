@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/attendance/screens/attendance_detail_screen.dart';
+import '../../features/attendance/screens/attendance_screen.dart';
 import '../../features/visits/screens/visit_detail_screen.dart';
 import '../../features/visits/screens/visits_screen.dart';
 import '../../features/customers/screens/customer_detail_screen.dart';
@@ -65,6 +67,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       for (final role in UserRole.values) _shellFor(role),
       for (final role in UserRole.values) _leadRoutesFor(role),
+      for (final role in UserRole.values) _attendanceRoutesFor(role),
     ],
   );
 
@@ -139,6 +142,7 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
   ],
   _ => const <RouteBase>[],
 };
+
 /// Leads isn't a bottom-nav tab in the spec, so it opens as full-screen
 /// pages above the shell (reached from the dashboard quick actions).
 GoRoute _leadRoutesFor(UserRole role) {
@@ -147,23 +151,34 @@ GoRoute _leadRoutesFor(UserRole role) {
     builder: (context, state) => const LeadsScreen(),
     routes: [
       // 'new' must be declared before ':id' so it isn't read as an id.
-      GoRoute(
-        path: 'new',
-        builder: (context, state) => const LeadFormScreen(),
-      ),
+      GoRoute(path: 'new', builder: (context, state) => const LeadFormScreen()),
       GoRoute(
         path: ':id',
-        builder: (context, state) => LeadDetailScreen(
-          leadId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) =>
+            LeadDetailScreen(leadId: state.pathParameters['id']!),
         routes: [
           GoRoute(
             path: 'edit',
-            builder: (context, state) => LeadFormScreen(
-              leadId: state.pathParameters['id'],
-            ),
+            builder: (context, state) =>
+                LeadFormScreen(leadId: state.pathParameters['id']),
           ),
         ],
+      ),
+    ],
+  );
+}
+/// Attendance isn't a bottom-nav tab in the spec, so it opens as
+/// full-screen pages above the shell (reached from dashboard quick actions).
+GoRoute _attendanceRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/attendance',
+    builder: (context, state) => const AttendanceScreen(),
+    routes: [
+      GoRoute(
+        path: ':id',
+        builder: (context, state) => AttendanceDetailScreen(
+          employeeId: state.pathParameters['id']!,
+        ),
       ),
     ],
   );
