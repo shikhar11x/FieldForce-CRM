@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/extensions/animate_extensions.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -88,7 +89,7 @@ class _DashboardContent extends StatelessWidget {
             QuickAction(
               label: 'Add Employee',
               icon: Icons.person_add_alt_1_rounded,
-              onTap: () => comingSoon('Add Employee'),
+              onTap: () => context.go('/admin/users/new'),
             ),
             QuickAction(
               label: 'Add Customer',
@@ -100,16 +101,17 @@ class _DashboardContent extends StatelessWidget {
               icon: Icons.add_task_rounded,
               onTap: () => comingSoon('Create Task'),
             ),
-                        QuickAction(
+            QuickAction(
               label: 'View Reports',
               icon: Icons.insights_rounded,
-              onTap: () => context.push('/admin/reports'),            ),
-                        QuickAction(
+              onTap: () => context.push('/admin/reports'),
+            ),
+            QuickAction(
               label: 'Leads Pipeline',
               icon: Icons.filter_alt_rounded,
               onTap: () => context.push('/admin/leads'),
             ),
-                        QuickAction(
+            QuickAction(
               label: 'Attendance',
               icon: Icons.event_available_rounded,
               onTap: () => context.push('/admin/attendance'),
@@ -119,7 +121,6 @@ class _DashboardContent extends StatelessWidget {
               icon: Icons.map_rounded,
               onTap: () => context.push('/admin/maps'),
             ),
-
           ],
         ).entrance(2),
         const SectionHeader(title: 'Analytics'),

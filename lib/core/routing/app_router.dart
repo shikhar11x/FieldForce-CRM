@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/more/screens/admin_more_screen.dart';
+import '../../features/users/screens/user_detail_screen.dart';
+import '../../features/users/screens/user_form_screen.dart';
+import '../../features/users/screens/users_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -122,6 +126,8 @@ Widget _screenFor(NavItem item) => switch (item.path) {
   '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
   '/manager/reports' => const ReportsScreen(),
   '/employee/profile' => const ProfileScreen(),
+  '/admin/users' || '/manager/team' => const UsersScreen(),
+  '/admin/more' => const AdminMoreScreen(),
   '/admin/visits' ||
   '/manager/visits' ||
   '/employee/visits' => const VisitsScreen(),
@@ -162,6 +168,35 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
     ),
   ],
   '/employee/profile' => _profileSubRoutes(),
+        // 'new' must be declared before ':id' so it isn't read as an id.
+      '/admin/users' => <RouteBase>[
+          GoRoute(
+            path: 'new',
+            builder: (context, state) => const UserFormScreen(),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => UserDetailScreen(
+              userId: state.pathParameters['id']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) => UserFormScreen(
+                  userId: state.pathParameters['id'],
+                ),
+              ),
+            ],
+          ),
+        ],
+      '/manager/team' => <RouteBase>[
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => UserDetailScreen(
+              userId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
   _ => const <RouteBase>[],
 };
 
@@ -252,16 +287,14 @@ GoRoute _notificationRoutesFor(UserRole role) {
     ],
   );
 }
+
 List<RouteBase> _profileSubRoutes() => <RouteBase>[
-      GoRoute(
-        path: 'edit',
-        builder: (context, state) => const EditProfileScreen(),
-      ),
-      GoRoute(
-        path: 'password',
-        builder: (context, state) => const ChangePasswordScreen(),
-      ),
-    ];
+  GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
+  GoRoute(
+    path: 'password',
+    builder: (context, state) => const ChangePasswordScreen(),
+  ),
+];
 
 /// Employees have a Profile tab. Admin and Manager open Profile as a
 /// full-screen page from the avatar menu.
