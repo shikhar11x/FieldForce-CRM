@@ -115,7 +115,7 @@ class _EmployeeContent extends ConsumerWidget {
             QuickAction(
               label: 'Start Visit',
               icon: Icons.play_circle_outline_rounded,
-              onTap: () => comingSoon('Start Visit'),
+              onTap: () => context.go('/employee/visits'),
             ),
             QuickAction(
               label: 'Scan QR',
@@ -131,6 +131,11 @@ class _EmployeeContent extends ConsumerWidget {
               label: 'View Tasks',
               icon: Icons.checklist_rounded,
               onTap: () => context.go('/employee/tasks'),
+            ),
+            QuickAction(
+              label: 'My Leads',
+              icon: Icons.filter_alt_rounded,
+              onTap: () => context.push('/employee/leads'),
             ),
           ],
         ).entrance(3),

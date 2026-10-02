@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:go_router/go_router.dart';
 import '../../../core/extensions/animate_extensions.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -100,10 +100,15 @@ class _DashboardContent extends StatelessWidget {
               icon: Icons.add_task_rounded,
               onTap: () => comingSoon('Create Task'),
             ),
-            QuickAction(
+                        QuickAction(
               label: 'View Reports',
               icon: Icons.insights_rounded,
               onTap: () => comingSoon('Reports'),
+            ),
+            QuickAction(
+              label: 'Leads Pipeline',
+              icon: Icons.filter_alt_rounded,
+              onTap: () => context.push('/admin/leads'),
             ),
           ],
         ).entrance(2),

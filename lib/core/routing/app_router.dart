@@ -3,9 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/visits/screens/visit_detail_screen.dart';
+import '../../features/visits/screens/visits_screen.dart';
 import '../../features/customers/screens/customer_detail_screen.dart';
 import '../../features/customers/screens/customers_screen.dart';
 import '../../features/tasks/screens/task_detail_screen.dart';
+import '../../features/leads/screens/lead_detail_screen.dart';
+import '../../features/leads/screens/lead_form_screen.dart';
+import '../../features/leads/screens/leads_screen.dart';
 import '../../features/tasks/screens/task_form_screen.dart';
 import '../../features/tasks/screens/tasks_screen.dart';
 import '../../data/models/user_role.dart';
@@ -59,6 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       for (final role in UserRole.values) _shellFor(role),
+      for (final role in UserRole.values) _leadRoutesFor(role),
     ],
   );
 
@@ -87,47 +93,78 @@ StatefulShellRoute _shellFor(UserRole role) {
 
 /// Real screens replace placeholders here as each step lands.
 Widget _screenFor(NavItem item) => switch (item.path) {
-      '/admin/dashboard' => const AdminDashboardScreen(),
-      '/manager/dashboard' => const ManagerDashboardScreen(),
-      '/employee/home' => const EmployeeHomeScreen(),
-      '/admin/customers' ||
-      '/employee/customers' =>
-        const CustomersScreen(),
-      '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
-      _ => PlaceholderScreen(title: item.label, icon: item.selectedIcon),
-    };
+  '/admin/dashboard' => const AdminDashboardScreen(),
+  '/manager/dashboard' => const ManagerDashboardScreen(),
+  '/employee/home' => const EmployeeHomeScreen(),
+  '/admin/customers' || '/employee/customers' => const CustomersScreen(),
+  '/manager/tasks' || '/employee/tasks' => const TasksScreen(),
+  '/admin/visits' ||
+  '/manager/visits' ||
+  '/employee/visits' => const VisitsScreen(),
+  _ => PlaceholderScreen(title: item.label, icon: item.selectedIcon),
+};
 
 /// Detail routes nested under a tab, so the navigation bar stays visible
 /// and tapping the tab again returns to the list.
 List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
-      '/admin/customers' || '/employee/customers' => <RouteBase>[
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => CustomerDetailScreen(
-              customerId: state.pathParameters['id']!,
-            ),
-          ),
-        ],
+  '/admin/customers' || '/employee/customers' => <RouteBase>[
+    GoRoute(
+      path: ':id',
+      builder: (context, state) =>
+          CustomerDetailScreen(customerId: state.pathParameters['id']!),
+    ),
+  ],
+  // 'new' must be declared before ':id' so it isn't read as an id.
+  '/manager/tasks' || '/employee/tasks' => <RouteBase>[
+    GoRoute(path: 'new', builder: (context, state) => const TaskFormScreen()),
+    GoRoute(
+      path: ':id',
+      builder: (context, state) =>
+          TaskDetailScreen(taskId: state.pathParameters['id']!),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) =>
+              TaskFormScreen(taskId: state.pathParameters['id']),
+        ),
+      ],
+    ),
+  ],
+  '/admin/visits' || '/manager/visits' || '/employee/visits' => <RouteBase>[
+    GoRoute(
+      path: ':id',
+      builder: (context, state) =>
+          VisitDetailScreen(visitId: state.pathParameters['id']!),
+    ),
+  ],
+  _ => const <RouteBase>[],
+};
+/// Leads isn't a bottom-nav tab in the spec, so it opens as full-screen
+/// pages above the shell (reached from the dashboard quick actions).
+GoRoute _leadRoutesFor(UserRole role) {
+  return GoRoute(
+    path: '${role.basePath}/leads',
+    builder: (context, state) => const LeadsScreen(),
+    routes: [
       // 'new' must be declared before ':id' so it isn't read as an id.
-      '/manager/tasks' || '/employee/tasks' => <RouteBase>[
+      GoRoute(
+        path: 'new',
+        builder: (context, state) => const LeadFormScreen(),
+      ),
+      GoRoute(
+        path: ':id',
+        builder: (context, state) => LeadDetailScreen(
+          leadId: state.pathParameters['id']!,
+        ),
+        routes: [
           GoRoute(
-            path: 'new',
-            builder: (context, state) => const TaskFormScreen(),
-          ),
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => TaskDetailScreen(
-              taskId: state.pathParameters['id']!,
+            path: 'edit',
+            builder: (context, state) => LeadFormScreen(
+              leadId: state.pathParameters['id'],
             ),
-            routes: [
-              GoRoute(
-                path: 'edit',
-                builder: (context, state) => TaskFormScreen(
-                  taskId: state.pathParameters['id'],
-                ),
-              ),
-            ],
           ),
         ],
-      _ => const <RouteBase>[],
-    };
+      ),
+    ],
+  );
+}

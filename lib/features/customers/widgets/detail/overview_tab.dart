@@ -146,8 +146,7 @@ class OverviewTab extends StatelessWidget {
               icon: Icons.event_available_rounded,
               label: 'Schedule Visit',
               onTap: () => context.showSnack(
-                'Schedule Visit arrives with the Visits module.',
-              ),
+                'The visit scheduling form arrives in a later step.',              ),
             ),
             _ActionButton(
               icon: Icons.add_task_rounded,

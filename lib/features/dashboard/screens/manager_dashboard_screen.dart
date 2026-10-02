@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../widgets/quick_actions.dart';
 import '../../../core/extensions/animate_extensions.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/section_header.dart';
@@ -56,6 +57,27 @@ class _ManagerContent extends StatelessWidget {
       children: [
         const SectionHeader(title: 'Team overview'),
         TeamKpiGrid(kpis: data.kpis).entrance(1),
+        TeamKpiGrid(kpis: data.kpis).entrance(1),
+        const SectionHeader(title: 'Quick actions'),
+        QuickActions(
+          actions: [
+            QuickAction(
+              label: 'Leads Pipeline',
+              icon: Icons.filter_alt_rounded,
+              onTap: () => context.push('/manager/leads'),
+            ),
+            QuickAction(
+              label: 'Create Task',
+              icon: Icons.add_task_rounded,
+              onTap: () => context.go('/manager/tasks/new'),
+            ),
+            QuickAction(
+              label: 'View Visits',
+              icon: Icons.place_rounded,
+              onTap: () => context.go('/manager/visits'),
+            ),
+          ],
+        ).entrance(2),
         const SectionHeader(title: 'Team performance'),
         TeamAnalyticsSection(data: data).entrance(2),
         SectionHeader(
