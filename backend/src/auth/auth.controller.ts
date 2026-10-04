@@ -3,13 +3,19 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { LoginDto, RefreshDto } from './auth.dto.js';
+import {
+  ChangePasswordDto,
+  LoginDto,
+  RefreshDto,
+  UpdateProfileDto,
+} from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import type { AuthUser } from './auth.types.js';
-import { CurrentUser, Public, Roles } from './decorators.js';
+import { CurrentUser, Public } from './decorators.js';
 
 @Controller('auth')
 export class AuthController {
@@ -43,10 +49,22 @@ export class AuthController {
     return this.auth.getProfile(user.id);
   }
 
-  /** Temporary: roles guard ko test karne ke liye. Step 17 me hata denge. */
-  @Roles('ADMIN')
-  @Get('admin-ping')
-  adminPing() {
-    return { ok: true };
+  @Patch('me')
+  updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(user.id, dto.email, dto.phone);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('change-password')
+  @HttpCode(200)
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 }

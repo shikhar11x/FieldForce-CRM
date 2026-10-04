@@ -13,6 +13,21 @@ class AppUser {
     required this.joiningDate,
   });
 
+  /// Backend ka `/auth/*` profile response.
+  factory AppUser.fromJson(Map<String, dynamic> json) {
+    return AppUser(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      phone: json['phone'] as String,
+      role: UserRole.values.byName((json['role'] as String).toLowerCase()),
+      organization: json['organization'] as String,
+      employeeId: json['employeeId'] as String,
+      department: json['department'] as String,
+      joiningDate: DateTime.parse(json['joiningDate'] as String),
+    );
+  }
+
   final String id;
   final String name;
   final String email;
@@ -29,7 +44,7 @@ class AppUser {
     return (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
-  /// Only the fields a user may edit themselves.
+  /// Sirf wo fields jo user khud edit kar sakta hai.
   AppUser copyWith({String? email, String? phone}) {
     return AppUser(
       id: id,

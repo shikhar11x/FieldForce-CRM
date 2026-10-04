@@ -1,27 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_logo.dart';
+import '../auth/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Phase 2 replaces this with a session/token check.
-    Future<void>.delayed(AppConstants.splashDuration, () {
-      if (mounted) context.go(AppRoutes.login);
-    });
+    _start();
+  }
+
+  /// Animation poori hone tak ruko, aur saath me stored session check karo.
+  Future<void> _start() async {
+    final minimum = Future<void>.delayed(AppConstants.splashDuration);
+    final user = await ref.read(authProvider.notifier).restoreSession();
+    await minimum;
+    if (!mounted) return;
+    context.go(user?.role.homePath ?? AppRoutes.login);
   }
 
   @override

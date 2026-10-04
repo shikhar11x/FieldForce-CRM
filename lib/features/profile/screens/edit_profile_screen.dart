@@ -8,7 +8,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/responsive_body.dart';
 import '../../auth/providers/auth_provider.dart';
-
+import '../../../data/repositories/auth_repository.dart';
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -50,6 +50,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             email: _email.text.trim(),
             phone: _phone.text.trim(),
           );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      context.showSnack(e.message);
+      return;
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);

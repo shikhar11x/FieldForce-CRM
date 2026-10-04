@@ -1,12 +1,14 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
+    BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { compare, hashSync } from 'bcryptjs';
+import { compare,hash, hashSync } from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AppRole } from './auth.types.js';
 
@@ -130,6 +132,53 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Account is not available.');
     return toProfile(user);
+  }
+    async updateProfile(userId: string, email: string, phone: string) {
+    const normalized = email.trim().toLowerCase();
+
+    const taken = await this.prisma.user.findFirst({
+      where: { email: normalized, NOT: { id: userId } },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException('That email is already in use.');
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { email: normalized, phone: phone.trim() },
+      include: { organization: { select: { name: true } } },
+    });
+    return toProfile(user);
+  }
+
+  /** Password badalne pe baaki sab sessions band, is device ko naye tokens. */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { organization: { select: { name: true } } },
+    });
+    if (!user) throw new UnauthorizedException('Account is not available.');
+
+    if (!(await compare(currentPassword, user.passwordHash))) {
+      throw new BadRequestException('Your current password is incorrect.');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('Choose a different password.');
+    }
+
+    const passwordHash = await hash(newPassword, 12);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return this.issueTokens(user);
   }
 
   private async issueTokens(user: UserRecord) {

@@ -1,13 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/api_config.dart';
+import '../../../core/network/api_providers.dart';
 import '../../../data/models/app_user.dart';
 import '../../../data/models/user_role.dart';
+import '../../../data/repositories/api_auth_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/mock_auth_repository.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => MockAuthRepository(),
-);
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  if (ApiConfig.useMockAuth) return MockAuthRepository();
+  return ApiAuthRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(tokenStorageProvider),
+  );
+});
 
 class AuthState {
   const AuthState({this.user, this.isLoading = false, this.error});
@@ -21,7 +28,18 @@ class AuthState {
 
 class AuthNotifier extends Notifier<AuthState> {
   @override
-  AuthState build() => const AuthState();
+  AuthState build() {
+    // Refresh token reject ho jaye to user ko login pe bhej do.
+    final sub = ref.read(apiClientProvider).onSessionExpired.listen((_) {
+      if (state.user != null) {
+        state = const AuthState(
+          error: 'Your session expired. Please sign in again.',
+        );
+      }
+    });
+    ref.onDispose(sub.cancel);
+    return const AuthState();
+  }
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);
 
@@ -33,8 +51,14 @@ class AuthNotifier extends Notifier<AuthState> {
     return _run(() => _repo.loginAsDemo(role));
   }
 
-  /// Saves editable profile fields. Doesn't go through `_run`, because
-  /// that briefly clears the user and would bounce the app to Login.
+  /// Splash isse stored session wapas laata hai.
+  Future<AppUser?> restoreSession() async {
+    final user = await _repo.restoreSession();
+    if (user != null) state = AuthState(user: user);
+    return user;
+  }
+
+  /// `_run` se alag, kyunki wo user ko clear karke Login pe bhej dega.
   Future<void> updateProfile({
     required String email,
     required String phone,
@@ -70,6 +94,8 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState(user: user);
     } on AuthException catch (e) {
       state = AuthState(error: e.message);
+    } catch (_) {
+      state = const AuthState(error: 'Something went wrong. Please try again.');
     }
   }
 }

@@ -9,10 +9,12 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
-/// Phase 2 swaps the mock implementation for an API-backed one.
 abstract class AuthRepository {
   Future<AppUser> login({required String email, required String password});
   Future<AppUser> loginAsDemo(UserRole role);
+
+  /// Stored tokens se user wapas laata hai. Null = login chahiye.
+  Future<AppUser?> restoreSession();
   Future<AppUser> updateProfile(AppUser user);
   Future<void> changePassword({
     required String currentPassword,
