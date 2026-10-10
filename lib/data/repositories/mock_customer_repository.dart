@@ -16,4 +16,35 @@ class MockCustomerRepository implements CustomerRepository {
     if (match.isEmpty) throw Exception('Customer not found: $id');
     return MockCustomers.detail(match.first);
   }
+
+  // Mock mode me writes sirf dikhawe ke liye hain: list dobara load hone
+  // par mock data wapas aa jaata hai.
+  @override
+  Future<Customer> createCustomer(
+    Customer customer, {
+    bool includeManagedFields = true,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return customer;
+  }
+
+  @override
+  Future<Customer> updateCustomer(
+    Customer customer, {
+    bool includeManagedFields = true,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return customer;
+  }
+
+  @override
+  Future<CustomerNote> addNote(String customerId, String text) async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    return CustomerNote(
+      id: 'n${DateTime.now().microsecondsSinceEpoch}',
+      author: 'You',
+      text: text,
+      timestamp: DateTime.now(),
+    );
+  }
 }

@@ -10,9 +10,9 @@ class MockUserRepository implements UserRepository {
   }
 
   @override
-  Future<DirectoryUser> createUser(DirectoryUser user) async {
+  Future<CreatedUser> createUser(DirectoryUser user) async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    return user;
+    return CreatedUser(user: user, temporaryPassword: 'Welcome123');
   }
 
   @override
