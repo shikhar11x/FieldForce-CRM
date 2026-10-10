@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/note_sheet.dart';
 import '../../../data/models/task_enums.dart';
@@ -37,6 +38,8 @@ class _VisitActionPanelState extends ConsumerState<VisitActionPanel> {
     try {
       await action();
       if (mounted) context.showSnack(message);
+    } on ApiException catch (e) {
+      if (mounted) context.showSnack(e.message);
     } catch (_) {
       if (mounted) {
         context.showSnack('Could not update the visit. Please try again.');
