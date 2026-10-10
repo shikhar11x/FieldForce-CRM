@@ -11,6 +11,7 @@ import '../../../core/widgets/stat_grid.dart';
 import '../../../data/models/employee_models.dart';
 import '../../attendance/providers/today_attendance_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../tasks/providers/task_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/attendance_status_card.dart';
 import '../widgets/dashboard_layout.dart';
@@ -24,6 +25,7 @@ class EmployeeHomeScreen extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(employeeHomeProvider);
+    ref.invalidate(tasksProvider);
     try {
       await ref.read(employeeHomeProvider.future);
     } catch (_) {
@@ -56,9 +58,6 @@ class _EmployeeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    void comingSoon(String feature) =>
-        context.showSnack('$feature arrives in an upcoming step.');
-
     void checkIn() {
       final status = ref.read(todayAttendanceProvider).status;
       if (status == AttendanceStatus.notCheckedIn) {
@@ -80,7 +79,7 @@ class _EmployeeContent extends ConsumerWidget {
           items: [
             StatGridItem(
               label: "Today's tasks",
-              value: '${data.tasksToday}',
+              value: '${ref.watch(tasksDueTodayCountProvider)}',
               icon: Icons.task_alt_rounded,
               color: AppColors.primary,
             ),
@@ -125,7 +124,7 @@ class _EmployeeContent extends ConsumerWidget {
             QuickAction(
               label: 'Add Customer',
               icon: Icons.add_business_rounded,
-              onTap: () => comingSoon('Add Customer'),
+              onTap: () => context.go('/employee/customers/new'),
             ),
             QuickAction(
               label: 'View Tasks',
@@ -155,7 +154,7 @@ class _EmployeeContent extends ConsumerWidget {
           actionLabel: 'View all',
           onAction: () => context.go('/employee/tasks'),
         ),
-        UpcomingTasks(tasks: data.upcomingTasks).entrance(5),
+        const UpcomingTasks(basePath: '/employee').entrance(5),
         const SizedBox(height: AppSpacing.xl),
       ],
     );

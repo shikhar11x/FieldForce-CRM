@@ -94,7 +94,7 @@ class _DashboardContent extends StatelessWidget {
             QuickAction(
               label: 'Add Customer',
               icon: Icons.add_business_rounded,
-              onTap: () => comingSoon('Add Customer'),
+              onTap: () => context.go('/admin/customers/new'),
             ),
             QuickAction(
               label: 'Create Task',
