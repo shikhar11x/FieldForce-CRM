@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_dropdown.dart';
@@ -15,6 +17,8 @@ import '../../../data/models/directory_models.dart';
 import '../../../data/models/user_role.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+
+typedef _ManagerOption = ({String id, String name});
 
 /// Create (no [userId]) or edit (with [userId]) a user. Admin only.
 class UserFormScreen extends ConsumerWidget {
@@ -53,9 +57,13 @@ class UserFormScreen extends ConsumerWidget {
               }
             }
 
-            final managers = [
+            // Active managers, plus the current one even if now inactive.
+            final currentManagerId = initial?.managerId;
+            final managers = <_ManagerOption>[
               for (final u in list)
-                if (u.role == UserRole.manager && u.isActive) u.name,
+                if (u.role == UserRole.manager &&
+                    (u.isActive || u.id == currentManagerId))
+                  (id: u.id, name: u.name),
             ];
 
             return _UserForm(
@@ -74,7 +82,7 @@ class _UserForm extends ConsumerStatefulWidget {
   const _UserForm({super.key, this.initial, required this.managers});
 
   final DirectoryUser? initial;
-  final List<String> managers;
+  final List<_ManagerOption> managers;
 
   @override
   ConsumerState<_UserForm> createState() => _UserFormState();
@@ -90,7 +98,7 @@ class _UserFormState extends ConsumerState<_UserForm> {
 
   late UserRole _role;
   String? _team;
-  String? _manager;
+  String? _managerId;
   late bool _active;
   bool _saving = false;
 
@@ -108,7 +116,7 @@ class _UserFormState extends ConsumerState<_UserForm> {
 
     _role = u?.role ?? UserRole.employee;
     _team = (u == null || u.team.isEmpty) ? null : u.team;
-    _manager = (u == null || u.manager.isEmpty) ? null : u.manager;
+    _managerId = (u == null || u.managerId.isEmpty) ? null : u.managerId;
     _active = u?.isActive ?? true;
   }
 
@@ -127,6 +135,51 @@ class _UserFormState extends ConsumerState<_UserForm> {
     return [...options, current];
   }
 
+  String _managerName(String id) {
+    for (final m in widget.managers) {
+      if (m.id == id) return m.name;
+    }
+    return '';
+  }
+
+  Future<void> _showTemporaryPassword(String password) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('User created'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Share this temporary password securely. It is shown only '
+              'once. Ask them to change it after signing in.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SelectableText(
+              password,
+              style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: password)),
+            child: const Text('Copy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -134,11 +187,13 @@ class _UserFormState extends ConsumerState<_UserForm> {
 
     final isEmployee = _role == UserRole.employee;
     final team = isEmployee ? (_team ?? '') : '';
-    final manager = isEmployee ? (_manager ?? '') : '';
+    final managerId = isEmployee ? (_managerId ?? '') : '';
+    final managerName = managerId.isEmpty ? '' : _managerName(managerId);
     final initial = widget.initial;
 
     final user = initial == null
         ? DirectoryUser(
+            // Server asli id aur employeeId deta hai; ye sirf mock mode ke liye.
             id: 'u${DateTime.now().microsecondsSinceEpoch}',
             name: _name.text.trim(),
             email: _email.text.trim(),
@@ -147,7 +202,8 @@ class _UserFormState extends ConsumerState<_UserForm> {
             designation: _designation.text.trim(),
             department: _department.text.trim(),
             team: team,
-            manager: manager,
+            manager: managerName,
+            managerId: managerId,
             employeeId:
                 'FF-${1000 + DateTime.now().millisecondsSinceEpoch % 9000}',
             joiningDate: DateTime.now(),
@@ -161,17 +217,25 @@ class _UserFormState extends ConsumerState<_UserForm> {
             designation: _designation.text.trim(),
             department: _department.text.trim(),
             team: team,
-            manager: manager,
+            manager: managerName,
+            managerId: managerId,
             isActive: _active,
           );
 
     final notifier = ref.read(usersProvider.notifier);
+    String? temporaryPassword;
     try {
       if (initial == null) {
-        await notifier.addUser(user);
+        final created = await notifier.addUser(user);
+        temporaryPassword = created.temporaryPassword;
       } else {
         await notifier.saveUser(user);
       }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      context.showSnack(e.message);
+      return;
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -179,6 +243,8 @@ class _UserFormState extends ConsumerState<_UserForm> {
       return;
     }
 
+    if (!mounted) return;
+    if (temporaryPassword != null) await _showTemporaryPassword(temporaryPassword);
     if (!mounted) return;
     context.showSnack(initial == null ? 'User added.' : 'User updated.');
     context.pop();
@@ -201,7 +267,7 @@ class _UserFormState extends ConsumerState<_UserForm> {
             textInputAction: TextInputAction.next,
             enabled: !_saving,
             validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
+                (v == null || v.trim().length < 2) ? 'Enter a name' : null,
           ),
           gap,
           AppTextField(
@@ -243,7 +309,8 @@ class _UserFormState extends ConsumerState<_UserForm> {
             value: _role,
             items: UserRole.values,
             labelOf: (r) => r.label,
-            onChanged: _saving ? null : (v) => setState(() => _role = v ?? _role),
+            onChanged:
+                _saving ? null : (v) => setState(() => _role = v ?? _role),
           ),
           gap,
           AppTextField(
@@ -253,8 +320,9 @@ class _UserFormState extends ConsumerState<_UserForm> {
             prefixIcon: Icons.work_outline_rounded,
             textInputAction: TextInputAction.next,
             enabled: !_saving,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter a designation' : null,
+            validator: (v) => (v == null || v.trim().length < 2)
+                ? 'Enter a designation'
+                : null,
           ),
           gap,
           AppTextField(
@@ -263,8 +331,9 @@ class _UserFormState extends ConsumerState<_UserForm> {
             prefixIcon: Icons.account_tree_outlined,
             textInputAction: TextInputAction.done,
             enabled: !_saving,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter a department' : null,
+            validator: (v) => (v == null || v.trim().length < 2)
+                ? 'Enter a department'
+                : null,
           ),
           if (isEmployee) ...[
             gap,
@@ -281,10 +350,11 @@ class _UserFormState extends ConsumerState<_UserForm> {
             AppDropdown<String>(
               label: 'Reports to',
               icon: Icons.supervisor_account_outlined,
-              value: _manager,
-              items: _withCurrent(widget.managers, _manager),
-              labelOf: (s) => s,
-              onChanged: _saving ? null : (v) => setState(() => _manager = v),
+              value: _managerId,
+              items: [for (final m in widget.managers) m.id],
+              labelOf: _managerName,
+              onChanged:
+                  _saving ? null : (v) => setState(() => _managerId = v),
               validator: (v) => v == null ? 'Select a manager' : null,
             ),
           ],

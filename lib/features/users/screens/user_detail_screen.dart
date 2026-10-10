@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/extensions/datetime_extensions.dart';
 import '../../../core/extensions/user_role_style_extensions.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
@@ -115,9 +116,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       await ref.read(usersProvider.notifier).setActive(user, !deactivating);
       if (mounted) {
         context.showSnack(
-          deactivating ? '${user.name} deactivated.' : '${user.name} reactivated.',
+          deactivating
+              ? '${user.name} deactivated.'
+              : '${user.name} reactivated.',
         );
       }
+    } on ApiException catch (e) {
+      if (mounted) context.showSnack(e.message);
     } catch (_) {
       if (mounted) {
         context.showSnack('Could not update the user. Please try again.');
