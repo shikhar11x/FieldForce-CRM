@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../../core/network/api_exception.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/extensions/task_style_extensions.dart';
 import '../../../core/theme/app_colors.dart';
@@ -173,6 +173,8 @@ class _StatusActionsState extends ConsumerState<_StatusActions> {
             status,
           );
       if (mounted) context.showSnack(message);
+        } on ApiException catch (e) {
+      if (mounted) context.showSnack(e.message);
     } catch (_) {
       if (mounted) {
         context.showSnack('Could not update the task. Please try again.');

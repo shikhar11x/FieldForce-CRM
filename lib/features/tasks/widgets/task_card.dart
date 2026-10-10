@@ -12,12 +12,14 @@ class TaskCard extends StatelessWidget {
   const TaskCard({
     super.key,
     required this.task,
-    required this.onTap,
+    this.onTap,
     this.showAssignee = true,
   });
 
   final TaskItem task;
-  final VoidCallback onTap;
+
+  /// Null = card tap nahi hota (jaise Admin, jiske paas Tasks section nahi).
+  final VoidCallback? onTap;
   final bool showAssignee;
 
   @override
