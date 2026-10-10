@@ -1,13 +1,24 @@
 import 'task_enums.dart';
 
 enum CustomerStatus {
-  active('Active'),
-  inactive('Inactive'),
-  newCustomer('New');
+  active('Active', 'ACTIVE'),
+  inactive('Inactive', 'INACTIVE'),
+  newCustomer('New', 'NEW');
 
-  const CustomerStatus(this.label);
+  const CustomerStatus(this.label, this.apiValue);
   final String label;
+  final String apiValue;
+
+  static CustomerStatus fromApi(String value) {
+    return CustomerStatus.values.firstWhere(
+      (s) => s.apiValue == value,
+      orElse: () => CustomerStatus.newCustomer,
+    );
+  }
 }
+
+DateTime? _parseDate(Object? value) =>
+    value is String ? DateTime.parse(value).toLocal() : null;
 
 class Customer {
   const Customer({
@@ -19,10 +30,28 @@ class Customer {
     required this.address,
     required this.status,
     required this.assignedEmployee,
+    this.assignedEmployeeId = '',
     this.lastVisit,
     this.nextVisit,
     this.highPriority = false,
   });
+
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    return Customer(
+      id: json['id'] as String,
+      company: json['company'] as String,
+      contactName: json['contactName'] as String,
+      phone: json['phone'] as String,
+      email: json['email'] as String,
+      address: json['address'] as String,
+      status: CustomerStatus.fromApi(json['status'] as String),
+      assignedEmployee: json['assignedEmployee'] as String? ?? 'Unassigned',
+      assignedEmployeeId: json['assignedEmployeeId'] as String? ?? '',
+      lastVisit: _parseDate(json['lastVisit']),
+      nextVisit: _parseDate(json['nextVisit']),
+      highPriority: json['highPriority'] as bool,
+    );
+  }
 
   final String id;
   final String company;
@@ -32,9 +61,27 @@ class Customer {
   final String address;
   final CustomerStatus status;
   final String assignedEmployee;
+  final String assignedEmployeeId;
   final DateTime? lastVisit;
   final DateTime? nextVisit;
   final bool highPriority;
+
+  /// Create / update request body. Employee ke liye [includeManaged] false
+  /// rakho: assignment, status aur priority sirf admin / manager badalte hain.
+  Map<String, dynamic> toRequestJson({bool includeManaged = true}) {
+    return {
+      'company': company,
+      'contactName': contactName,
+      'phone': phone,
+      'email': email,
+      'address': address,
+      if (includeManaged) ...{
+        'status': status.apiValue,
+        'highPriority': highPriority,
+        if (assignedEmployeeId.isNotEmpty) 'assignedToId': assignedEmployeeId,
+      },
+    };
+  }
 }
 
 enum CustomerActivityType { call, visit, task, note, statusUpdate }
@@ -69,22 +116,6 @@ class CustomerVisit {
   final VisitStatus status;
 }
 
-class CustomerTask {
-  const CustomerTask({
-    required this.id,
-    required this.title,
-    required this.due,
-    required this.priority,
-    required this.status,
-  });
-
-  final String id;
-  final String title;
-  final DateTime due;
-  final TaskPriority priority;
-  final TaskStatus status;
-}
-
 class CustomerNote {
   const CustomerNote({
     required this.id,
@@ -92,6 +123,15 @@ class CustomerNote {
     required this.text,
     required this.timestamp,
   });
+
+  factory CustomerNote.fromJson(Map<String, dynamic> json) {
+    return CustomerNote(
+      id: json['id'] as String,
+      author: json['author'] as String,
+      text: json['text'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String).toLocal(),
+    );
+  }
 
   final String id;
   final String author;
@@ -122,7 +162,6 @@ class CustomerDetail {
     required this.customer,
     required this.activities,
     required this.visits,
-    required this.tasks,
     required this.notes,
     required this.documents,
   });
@@ -130,7 +169,6 @@ class CustomerDetail {
   final Customer customer;
   final List<CustomerActivity> activities;
   final List<CustomerVisit> visits;
-  final List<CustomerTask> tasks;
   final List<CustomerNote> notes;
   final List<CustomerDocument> documents;
 }

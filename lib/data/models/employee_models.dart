@@ -22,36 +22,10 @@ class RouteStop {
   final double y;
 }
 
-class UpcomingTask {
-  const UpcomingTask({
-    required this.id,
-    required this.title,
-    required this.customer,
-    required this.location,
-    required this.time,
-    required this.priority,
-    required this.status,
-  });
-
-  final String id;
-  final String title;
-  final String customer;
-  final String location;
-  final String time;
-  final TaskPriority priority;
-  final TaskStatus status;
-}
-
 class EmployeeHomeData {
-  const EmployeeHomeData({
-    required this.tasksToday,
-    required this.route,
-    required this.upcomingTasks,
-  });
+  const EmployeeHomeData({required this.route});
 
-  final int tasksToday;
   final List<RouteStop> route;
-  final List<UpcomingTask> upcomingTasks;
 
   int get visitsToday => route.length;
 
