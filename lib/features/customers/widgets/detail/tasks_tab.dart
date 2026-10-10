@@ -1,81 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/extensions/datetime_extensions.dart';
-import '../../../../core/extensions/task_style_extensions.dart';
+import '../../../../core/routing/app_navigation.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/async_value_view.dart';
 import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/status_chip.dart';
-import '../../../../data/models/customer_models.dart';
+import '../../../../core/widgets/skeleton_box.dart';
+import '../../../../data/models/task_models.dart';
+import '../../../../data/models/user_role.dart';
+import '../../../tasks/providers/task_provider.dart';
+import '../../../tasks/widgets/task_card.dart';
 
-class TasksTab extends StatelessWidget {
-  const TasksTab({super.key, required this.tasks});
+/// Tasks for one customer, read from the shared task list.
+class TasksTab extends ConsumerWidget {
+  const TasksTab({super.key, required this.customerName, required this.role});
 
-  final List<CustomerTask> tasks;
+  final String customerName;
+  final UserRole role;
 
   @override
-  Widget build(BuildContext context) {
-    if (tasks.isEmpty) {
-      return const EmptyState(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final createPath = newTaskPath(role, customer: customerName);
+    final canOpen = createPath != null;
+
+    return AsyncValueView<List<TaskItem>>(
+      value: ref.watch(customerTasksProvider(customerName)),
+      onRetry: () => ref.invalidate(tasksProvider),
+      loading: const _TasksSkeleton(),
+      isEmpty: (tasks) => tasks.isEmpty,
+      empty: EmptyState(
         icon: Icons.task_alt_rounded,
         title: 'No tasks assigned',
         message: 'Tasks for this customer will appear here.',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-      itemCount: tasks.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (context, i) => _TaskCard(task: tasks[i]),
+        actionLabel: canOpen ? 'Create task' : null,
+        onAction: canOpen ? () => context.go(createPath) : null,
+      ),
+      data: (tasks) => ListView(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+        children: [
+          if (canOpen) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.go(createPath),
+                icon: const Icon(Icons.add_task_rounded),
+                label: const Text('New task'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          for (final task in tasks) ...[
+            TaskCard(
+              task: task,
+              onTap: canOpen
+                  ? () => context.go('${role.basePath}/tasks/${task.id}')
+                  : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ],
+      ),
     );
   }
 }
 
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task});
-
-  final CustomerTask task;
+class _TasksSkeleton extends StatelessWidget {
+  const _TasksSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
-    final time = TimeOfDay.fromDateTime(task.due).format(context);
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(task.title, style: theme.textTheme.titleSmall),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              StatusChip(
-                label: task.priority.label,
-                color: task.priority.color,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded, size: 16, color: muted),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Due ${task.due.dayLabel}, $time',
-                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
-                ),
-              ),
-              StatusChip(label: task.status.label, color: task.status.color),
-            ],
-          ),
-        ],
-      ),
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SkeletonBox(height: 150, radius: AppRadius.lg),
+        SizedBox(height: AppSpacing.md),
+        SkeletonBox(height: 150, radius: AppRadius.lg),
+      ],
     );
   }
 }

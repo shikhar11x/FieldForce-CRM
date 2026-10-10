@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/extensions/animate_extensions.dart';
-import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -56,8 +55,7 @@ class CustomersScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Customers')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () =>
-            context.showSnack('Add Customer arrives in an upcoming step.'),
+        onPressed: () => context.go('${user.role.basePath}/customers/new'),
         icon: const Icon(Icons.add_business_rounded),
         label: const Text('Add customer'),
       ),

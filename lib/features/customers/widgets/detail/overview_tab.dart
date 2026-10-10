@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/extensions/customer_style_extensions.dart';
 import '../../../../core/extensions/datetime_extensions.dart';
 import '../../../../core/extensions/task_style_extensions.dart';
+import '../../../../core/routing/app_navigation.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/adaptive_wrap.dart';
 import '../../../../core/widgets/app_card.dart';
@@ -13,11 +15,13 @@ import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/status_chip.dart';
 import '../../../../data/models/customer_models.dart';
 import '../../../../data/models/task_enums.dart';
+import '../../../../data/models/user_role.dart';
 
 class OverviewTab extends StatelessWidget {
-  const OverviewTab({super.key, required this.customer});
+  const OverviewTab({super.key, required this.customer, required this.role});
 
   final Customer customer;
+  final UserRole role;
 
   @override
   Widget build(BuildContext context) {
@@ -138,22 +142,28 @@ class OverviewTab extends StatelessWidget {
             _ActionButton(
               icon: Icons.navigation_rounded,
               label: 'Navigate',
-              onTap: () => context.showSnack(
-                'Turn-by-turn navigation arrives with maps.',
-              ),
+              onTap: () => context.push('${role.basePath}/maps'),
             ),
             _ActionButton(
               icon: Icons.event_available_rounded,
               label: 'Schedule Visit',
               onTap: () => context.showSnack(
-                'The visit scheduling form arrives in a later step.',              ),
+                'Visit scheduling is wired up in Phase 2.',
+              ),
             ),
             _ActionButton(
               icon: Icons.add_task_rounded,
               label: 'Create Task',
-              onTap: () => context.showSnack(
-                'Create Task arrives with the Tasks module.',
-              ),
+              onTap: () {
+                final path = newTaskPath(role, customer: customer.company);
+                if (path == null) {
+                  context.showSnack(
+                    'Tasks are created by managers and employees.',
+                  );
+                } else {
+                  context.go(path);
+                }
+              },
             ),
           ],
         ),

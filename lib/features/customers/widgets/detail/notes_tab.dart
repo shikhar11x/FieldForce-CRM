@@ -1,39 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/extensions/datetime_extensions.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/initials_avatar.dart';
+import '../../../../core/widgets/note_sheet.dart';
 import '../../../../data/models/customer_models.dart';
+import '../../providers/customer_provider.dart';
 
-Future<void> _addNote(BuildContext context) async {
-  final text = await showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => const _AddNoteSheet(),
-  );
-  if (text != null && context.mounted) {
-    context.showSnack('Note saved. Persistence arrives in Phase 2.');
-  }
-}
+class NotesTab extends ConsumerWidget {
+  const NotesTab({super.key, required this.customerId, required this.notes});
 
-class NotesTab extends StatelessWidget {
-  const NotesTab({super.key, required this.notes});
-
+  final String customerId;
   final List<CustomerNote> notes;
 
+  Future<void> _addNote(BuildContext context, WidgetRef ref) async {
+    final text = await showNoteSheet(
+      context,
+      title: 'Add note',
+      hint: 'Write a note about this customer',
+    );
+    if (text == null || !context.mounted) return;
+
+    try {
+      await ref.read(customerRepositoryProvider).addNote(customerId, text);
+      ref.invalidate(customerDetailProvider(customerId));
+      if (context.mounted) context.showSnack('Note saved.');
+    } on ApiException catch (e) {
+      if (context.mounted) context.showSnack(e.message);
+    } catch (_) {
+      if (context.mounted) {
+        context.showSnack('Could not save the note. Please try again.');
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (notes.isEmpty) {
       return EmptyState(
         icon: Icons.sticky_note_2_outlined,
         title: 'No notes yet',
         message: 'Capture details from calls and visits here.',
         actionLabel: 'Add note',
-        onAction: () => _addNote(context),
+        onAction: () => _addNote(context, ref),
       );
     }
 
@@ -43,7 +57,7 @@ class NotesTab extends StatelessWidget {
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton.tonalIcon(
-            onPressed: () => _addNote(context),
+            onPressed: () => _addNote(context, ref),
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add note'),
           ),
@@ -87,61 +101,6 @@ class _NoteCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           Text(note.text, style: theme.textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-}
-
-class _AddNoteSheet extends StatefulWidget {
-  const _AddNoteSheet();
-
-  @override
-  State<_AddNoteSheet> createState() => _AddNoteSheetState();
-}
-
-class _AddNoteSheetState extends State<_AddNoteSheet> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    Navigator.of(context).pop(text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        AppSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Add note', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            minLines: 3,
-            maxLines: 5,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'Write a note about this customer',
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppButton(label: 'Save note', onPressed: _save),
         ],
       ),
     );
