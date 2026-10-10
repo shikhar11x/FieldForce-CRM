@@ -33,8 +33,8 @@ class QrScanNotifier extends Notifier<QrScanResult?> {
     final visits = await ref.read(visitsProvider.future);
     VisitItem? visit;
     for (final v in visits) {
-      final active = v.status == VisitStatus.scheduled ||
-          v.status == VisitStatus.started;
+      final active =
+          v.status == VisitStatus.scheduled || v.status == VisitStatus.started;
       if (active && v.employee == employee && v.customer == customer.company) {
         visit = v;
         break;
@@ -54,7 +54,9 @@ class QrScanNotifier extends Notifier<QrScanResult?> {
     final withinRange = distance <= QrScanResult.geofenceMeters;
 
     if (withinRange) {
-      await ref.read(visitsProvider.notifier).markQrVerified(visit);
+      await ref
+          .read(visitsProvider.notifier)
+          .markQrVerified(visit, distanceMeters: distance);
     }
 
     return state = QrScanResult(
@@ -72,5 +74,6 @@ class QrScanNotifier extends Notifier<QrScanResult?> {
   }
 }
 
-final qrScanProvider =
-    NotifierProvider<QrScanNotifier, QrScanResult?>(QrScanNotifier.new);
+final qrScanProvider = NotifierProvider<QrScanNotifier, QrScanResult?>(
+  QrScanNotifier.new,
+);
