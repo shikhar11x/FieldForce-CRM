@@ -6,6 +6,14 @@ import { validateEnv } from './config/env.validation.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CustomersModule } from './customers/customers.module.js';
+import { UsersModule } from './users/users.module.js';
+import { TasksModule } from './tasks/tasks.module.js';
+// Mapped {/api/v1/auth/login, POST}
+// Mapped {/api/v1/users, GET}
+// Mapped {/api/v1/customers, GET}
+// Mapped {/api/v1/tasks, GET}
+// Mapped {/api/v1/tasks/options, GET}
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -15,7 +23,10 @@ import { AuthModule } from './auth/auth.module.js';
     PrismaModule,
     HealthModule,
     AuthModule,
+    UsersModule,
+    CustomersModule,
+    TasksModule
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule {}
+export class AppModule { }
