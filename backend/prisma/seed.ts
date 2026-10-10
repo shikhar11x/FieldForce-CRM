@@ -104,6 +104,49 @@ function taskTime(days: number, hour: number, minute = 0): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, hour, minute);
 }
 
+type VisitStatus = 'SCHEDULED' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
+type VisitType = 'SALES' | 'SERVICE' | 'FOLLOW_UP' | 'DELIVERY' | 'DEMO';
+type VisitEventType =
+  | 'SCHEDULED'
+  | 'STARTED'
+  | 'QR_VERIFIED'
+  | 'NOTE'
+  | 'PHOTO'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+interface SeedVisit {
+  customer: string;
+  assignee: string; // employee ka email
+  days: number;
+  hour: number;
+  minute?: number;
+  status: VisitStatus;
+  type: VisitType;
+  purpose: string;
+  startOffsetMin?: number; // schedule ke kitne minute baad start hua
+  durationMin?: number;
+  qrVerified?: boolean;
+  note?: string;
+  photo?: string;
+}
+
+const VISITS: SeedVisit[] = [
+  { customer: 'Metro Hardware', assignee: 'employee@fieldforce.com', days: 0, hour: 9, minute: 30, status: 'COMPLETED', type: 'SALES', purpose: 'Order follow-up and stock check', durationMin: 65, qrVerified: true, note: 'Stock levels are healthy. Owner wants revised pricing on the cement range.', photo: 'Shelf photo.jpg' },
+  { customer: 'Sunrise Traders', assignee: 'employee@fieldforce.com', days: 0, hour: 11, status: 'COMPLETED', type: 'SALES', purpose: 'Contract renewal paperwork', durationMin: 45, qrVerified: true, note: 'Signed contract copy collected from the owner.' },
+  { customer: 'Greenfield Foods', assignee: 'employee@fieldforce.com', days: 0, hour: 13, minute: 30, status: 'STARTED', type: 'DEMO', purpose: 'Product demo for the new packaging range', qrVerified: true },
+  { customer: 'Apex Pharma', assignee: 'employee@fieldforce.com', days: 0, hour: 15, status: 'SCHEDULED', type: 'FOLLOW_UP', purpose: 'Follow up on sample feedback' },
+  { customer: 'Bright Electricals', assignee: 'employee@fieldforce.com', days: 0, hour: 16, minute: 30, status: 'SCHEDULED', type: 'DELIVERY', purpose: 'Deliver the Q4 display kit' },
+  { customer: 'Metro Hardware', assignee: 'employee@fieldforce.com', days: -1, hour: 15, minute: 30, status: 'COMPLETED', type: 'SERVICE', purpose: 'Service check on the display unit', durationMin: 40, qrVerified: true, note: 'Replaced the faulty LED strip. Unit working normally.' },
+  { customer: 'Greenfield Foods', assignee: 'employee@fieldforce.com', days: 2, hour: 10, status: 'SCHEDULED', type: 'SALES', purpose: 'Annual contract renewal discussion' },
+  { customer: 'Ocean Logistics', assignee: 'neha.kapoor@fieldforce.com', days: 3, hour: 11, minute: 30, status: 'SCHEDULED', type: 'SALES', purpose: 'Volume pricing negotiation' },
+  { customer: 'Kisan Agro Supplies', assignee: 'imran.khan@fieldforce.com', days: 1, hour: 10, status: 'SCHEDULED', type: 'DEMO', purpose: 'Onboarding and product walkthrough' },
+  { customer: 'Urban Cafe Chain', assignee: 'sneha.reddy@fieldforce.com', days: 2, hour: 12, status: 'SCHEDULED', type: 'SALES', purpose: 'Bulk pricing proposal for 12 outlets' },
+  { customer: 'Silverline Textiles', assignee: 'arjun.nair@fieldforce.com', days: -10, hour: 12, status: 'CANCELLED', type: 'FOLLOW_UP', purpose: 'Dormant account check-in' },
+  { customer: 'Lotus Stationers', assignee: 'kavya.iyer@fieldforce.com', days: -75, hour: 11, status: 'COMPLETED', type: 'FOLLOW_UP', purpose: 'Check why orders have slowed', durationMin: 35 },
+  { customer: 'Apex Pharma', assignee: 'sneha.reddy@fieldforce.com', days: -6, hour: 11, status: 'COMPLETED', type: 'SERVICE', purpose: 'Install the counter display unit', startOffsetMin: 10, durationMin: 55, qrVerified: true },
+];
+
 async function main() {
   const passwordHash = await hash(process.env.SEED_PASSWORD ?? 'password123', 12);
 
@@ -226,6 +269,71 @@ async function main() {
       created++;
     }
     console.log(`Seeded ${created} tasks.`);
+  }
+
+  // Visits sirf tab seed hote hain jab abhi koi visit nahi hai.
+  const visitCount = await prisma.visit.count({
+    where: { organizationId: organization.id },
+  });
+  if (visitCount === 0) {
+    const customers = await prisma.customer.findMany({
+      where: { organizationId: organization.id },
+      select: { id: true, company: true, address: true },
+    });
+    const byCompany = new Map(customers.map((c) => [c.company, c]));
+    const creatorId = userIds.get('manager@fieldforce.com')!;
+
+    let created = 0;
+    for (const v of VISITS) {
+      const customer = byCompany.get(v.customer);
+      const assignedToId = userIds.get(v.assignee);
+      if (!customer || !assignedToId) {
+        console.warn(`Skipped visit "${v.purpose}" (customer or assignee missing).`);
+        continue;
+      }
+
+      const scheduledAt = taskTime(v.days, v.hour, v.minute ?? 0);
+      const at = (minutes: number) => new Date(scheduledAt.getTime() + minutes * 60_000);
+      const startMin = v.startOffsetMin ?? 5;
+      const endMin = startMin + (v.durationMin ?? 45);
+      const hasStarted = v.status === 'STARTED' || v.status === 'COMPLETED';
+
+      const events: { type: VisitEventType; title: string; createdAt: Date }[] = [
+        { type: 'SCHEDULED', title: 'Visit scheduled', createdAt: new Date(scheduledAt.getTime() - 86_400_000) },
+      ];
+      if (hasStarted) events.push({ type: 'STARTED', title: 'Visit started', createdAt: at(startMin) });
+      if (v.qrVerified) events.push({ type: 'QR_VERIFIED', title: 'QR code verified', createdAt: at(startMin + 1) });
+      if (v.photo) events.push({ type: 'PHOTO', title: 'Photo uploaded', createdAt: at(startMin + 30) });
+      if (v.note) events.push({ type: 'NOTE', title: 'Note added', createdAt: at(startMin + 35) });
+      if (v.status === 'COMPLETED') events.push({ type: 'COMPLETED', title: 'Visit completed', createdAt: at(endMin) });
+      if (v.status === 'CANCELLED') events.push({ type: 'CANCELLED', title: 'Visit cancelled', createdAt: at(-12 * 60) });
+
+      await prisma.visit.create({
+        data: {
+          organizationId: organization.id,
+          customerId: customer.id,
+          assignedToId,
+          createdById: creatorId,
+          scheduledAt,
+          location: customer.address,
+          status: v.status,
+          type: v.type,
+          purpose: v.purpose,
+          qrVerified: v.qrVerified ?? false,
+          startedAt: hasStarted ? at(startMin) : null,
+          completedAt: v.status === 'COMPLETED' ? at(endMin) : null,
+          events: { create: events },
+          notes: v.note
+            ? { create: { authorId: assignedToId, text: v.note, createdAt: at(startMin + 35) } }
+            : undefined,
+          attachments: v.photo
+            ? { create: { name: v.photo, kind: 'Photo', size: '2.1 MB', uploadedAt: at(startMin + 30) } }
+            : undefined,
+        },
+      });
+      created++;
+    }
+    console.log(`Seeded ${created} visits.`);
   }
 
   console.log(`Seeded ${USERS.length} users in "${organization.name}".`);

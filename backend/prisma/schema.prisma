@@ -33,6 +33,31 @@ enum TaskStatus {
   CANCELLED
 }
 
+enum VisitStatus {
+  SCHEDULED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum VisitType {
+  SALES
+  SERVICE
+  FOLLOW_UP
+  DELIVERY
+  DEMO
+}
+
+enum VisitEventType {
+  SCHEDULED
+  STARTED
+  QR_VERIFIED
+  NOTE
+  PHOTO
+  COMPLETED
+  CANCELLED
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
@@ -42,6 +67,7 @@ model Organization {
   teams     Team[]
   customers Customer[]
   tasks     Task[]
+  visits    Visit[]
 
   @@map("organizations")
 }
@@ -85,6 +111,9 @@ model User {
   customerNotes     CustomerNote[]
   assignedTasks     Task[]         @relation("AssignedTasks")
   createdTasks      Task[]         @relation("CreatedTasks")
+  assignedVisits    Visit[]        @relation("AssignedVisits")
+  createdVisits     Visit[]        @relation("CreatedVisits")
+  visitNotes        VisitNote[]
 
   @@index([organizationId, role])
   @@index([managerId])
@@ -117,7 +146,6 @@ model Customer {
   status         CustomerStatus @default(NEW)
   highPriority   Boolean        @default(false)
   assignedToId   String?
-  /// Visits module aane tak yahi stored dates hain.
   lastVisitAt    DateTime?
   nextVisitAt    DateTime?
   createdAt      DateTime       @default(now())
@@ -127,6 +155,7 @@ model Customer {
   assignedTo   User?          @relation("AssignedCustomers", fields: [assignedToId], references: [id], onDelete: SetNull)
   notes        CustomerNote[]
   tasks        Task[]
+  visits       Visit[]
 
   @@index([organizationId, status])
   @@index([assignedToId])
@@ -173,4 +202,78 @@ model Task {
   @@index([customerId])
   @@index([dueAt])
   @@map("tasks")
+}
+
+model Visit {
+  id             String      @id @default(uuid())
+  organizationId String
+  customerId     String
+  assignedToId   String
+  createdById    String
+  scheduledAt    DateTime
+  location       String      @default("")
+  status         VisitStatus @default(SCHEDULED)
+  type           VisitType
+  purpose        String
+  qrVerified     Boolean     @default(false)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  assignedTo   User               @relation("AssignedVisits", fields: [assignedToId], references: [id], onDelete: Restrict)
+  createdBy    User               @relation("CreatedVisits", fields: [createdById], references: [id], onDelete: Restrict)
+  notes        VisitNote[]
+  attachments  VisitAttachment[]
+  events       VisitEvent[]
+
+  @@index([organizationId, status])
+  @@index([assignedToId, status])
+  @@index([customerId])
+  @@index([scheduledAt])
+  @@map("visits")
+}
+
+model VisitNote {
+  id        String   @id @default(uuid())
+  visitId   String
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  visit  Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([visitId, createdAt])
+  @@map("visit_notes")
+}
+
+/// Abhi sirf placeholder metadata. Asli file upload baad ke step me aayega.
+model VisitAttachment {
+  id         String   @id @default(uuid())
+  visitId    String
+  name       String
+  kind       String
+  size       String
+  uploadedAt DateTime @default(now())
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@map("visit_attachments")
+}
+
+model VisitEvent {
+  id        String         @id @default(uuid())
+  visitId   String
+  type      VisitEventType
+  title     String
+  createdAt DateTime       @default(now())
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId, createdAt])
+  @@map("visit_events")
 }

@@ -8,6 +8,7 @@ import {
 import type { AuthUser } from '../auth/auth.types.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { visitScope } from '../visits/visit-scope.js';
 import type {
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -97,7 +98,29 @@ export class CustomersService {
       select: NOTE_SELECT,
       orderBy: { createdAt: 'desc' },
     });
-    return { customer: toDto(customer), notes: notes.map(toNoteDto) };
+    const visits = await this.prisma.visit.findMany({
+      where: { ...visitScope(actor), customerId: id },
+      select: {
+        id: true,
+        scheduledAt: true,
+        purpose: true,
+        status: true,
+        assignedTo: { select: { name: true } },
+      },
+      orderBy: { scheduledAt: 'desc' },
+    });
+
+    return {
+      customer: toDto(customer),
+      notes: notes.map(toNoteDto),
+      visits: visits.map((v) => ({
+        id: v.id,
+        date: v.scheduledAt.toISOString(),
+        employee: v.assignedTo.name,
+        purpose: v.purpose,
+        status: v.status,
+      })),
+    };
   }
 
   async create(actor: AuthUser, dto: CreateCustomerDto) {
