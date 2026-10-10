@@ -13,13 +13,35 @@ enum Role {
   EMPLOYEE
 }
 
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  NEW
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Organization {
   id        String   @id @default(uuid())
   name      String
   createdAt DateTime @default(now())
 
-  users User[]
-  teams Team[]
+  users     User[]
+  teams     Team[]
+  customers Customer[]
+  tasks     Task[]
 
   @@map("organizations")
 }
@@ -54,11 +76,15 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  team          Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  manager       User?          @relation("ManagerReports", fields: [managerId], references: [id], onDelete: SetNull)
-  reports       User[]         @relation("ManagerReports")
-  refreshTokens RefreshToken[]
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team              Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  manager           User?          @relation("ManagerReports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports           User[]         @relation("ManagerReports")
+  refreshTokens     RefreshToken[]
+  assignedCustomers Customer[]     @relation("AssignedCustomers")
+  customerNotes     CustomerNote[]
+  assignedTasks     Task[]         @relation("AssignedTasks")
+  createdTasks      Task[]         @relation("CreatedTasks")
 
   @@index([organizationId, role])
   @@index([managerId])
@@ -78,4 +104,73 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model Customer {
+  id             String         @id @default(uuid())
+  organizationId String
+  company        String
+  contactName    String
+  phone          String
+  email          String
+  address        String
+  status         CustomerStatus @default(NEW)
+  highPriority   Boolean        @default(false)
+  assignedToId   String?
+  /// Visits module aane tak yahi stored dates hain.
+  lastVisitAt    DateTime?
+  nextVisitAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTo   User?          @relation("AssignedCustomers", fields: [assignedToId], references: [id], onDelete: SetNull)
+  notes        CustomerNote[]
+  tasks        Task[]
+
+  @@index([organizationId, status])
+  @@index([assignedToId])
+  @@map("customers")
+}
+
+model CustomerNote {
+  id         String   @id @default(uuid())
+  customerId String
+  authorId   String
+  text       String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@map("customer_notes")
+}
+
+model Task {
+  id             String       @id @default(uuid())
+  organizationId String
+  title          String
+  description    String       @default("")
+  customerId     String
+  assignedToId   String
+  createdById    String
+  dueAt          DateTime
+  priority       TaskPriority @default(MEDIUM)
+  status         TaskStatus   @default(PENDING)
+  location       String       @default("")
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  assignedTo   User         @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: Restrict)
+  createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([assignedToId, status])
+  @@index([customerId])
+  @@index([dueAt])
+  @@map("tasks")
 }
