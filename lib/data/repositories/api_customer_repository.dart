@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../models/customer_models.dart';
+import '../models/task_enums.dart';
 import 'customer_repository.dart';
 
 class ApiCustomerRepository implements CustomerRepository {
@@ -24,29 +25,57 @@ class ApiCustomerRepository implements CustomerRepository {
     final response = await _api.dio.get<Map<String, dynamic>>('/customers/$id');
     final data = response.data!;
 
-    final customer =
-        Customer.fromJson(data['customer'] as Map<String, dynamic>);
+    final customer = Customer.fromJson(
+      data['customer'] as Map<String, dynamic>,
+    );
     final notes = [
       for (final item in data['notes'] as List<dynamic>)
         CustomerNote.fromJson(item as Map<String, dynamic>),
     ];
+    final visits = [
+      for (final item in (data['visits'] as List<dynamic>? ?? const []))
+        _visitFromJson(item as Map<String, dynamic>),
+    ];
 
-    // Visits aur documents ke APIs agle steps me aayenge. Tab tak activity
-    // me sirf notes dikhte hain.
+    final activities = <CustomerActivity>[
+      for (final n in notes)
+        CustomerActivity(
+          type: CustomerActivityType.note,
+          title: 'Note by ${n.author}',
+          description: n.text,
+          timestamp: n.timestamp,
+        ),
+      for (final v in visits)
+        CustomerActivity(
+          type: CustomerActivityType.visit,
+          title: switch (v.status) {
+            VisitStatus.completed => 'Visit completed',
+            VisitStatus.scheduled => 'Visit scheduled',
+            VisitStatus.started => 'Visit in progress',
+            VisitStatus.cancelled => 'Visit cancelled',
+          },
+          description: '${v.employee}: ${v.purpose}',
+          timestamp: v.date,
+        ),
+    ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    // Documents ka API abhi nahi bana.
     return CustomerDetail(
       customer: customer,
-      activities: [
-        for (final n in notes)
-          CustomerActivity(
-            type: CustomerActivityType.note,
-            title: 'Note by ${n.author}',
-            description: n.text,
-            timestamp: n.timestamp,
-          ),
-      ],
-      visits: const <CustomerVisit>[],
+      activities: activities,
+      visits: visits,
       notes: notes,
       documents: const <CustomerDocument>[],
+    );
+  }
+
+  CustomerVisit _visitFromJson(Map<String, dynamic> json) {
+    return CustomerVisit(
+      id: json['id'] as String,
+      date: DateTime.parse(json['date'] as String).toLocal(),
+      employee: json['employee'] as String,
+      purpose: json['purpose'] as String,
+      status: VisitStatus.fromApi(json['status'] as String),
     );
   }
 
