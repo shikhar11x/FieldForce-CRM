@@ -1,25 +1,43 @@
 import 'task_enums.dart';
 
 enum VisitType {
-  sales('Sales'),
-  service('Service'),
-  followUp('Follow-up'),
-  delivery('Delivery'),
-  demo('Demo');
+  sales('Sales', 'SALES'),
+  service('Service', 'SERVICE'),
+  followUp('Follow-up', 'FOLLOW_UP'),
+  delivery('Delivery', 'DELIVERY'),
+  demo('Demo', 'DEMO');
 
-  const VisitType(this.label);
+  const VisitType(this.label, this.apiValue);
   final String label;
+  final String apiValue;
+
+  static VisitType fromApi(String value) => VisitType.values.firstWhere(
+    (t) => t.apiValue == value,
+    orElse: () => VisitType.sales,
+  );
 }
 
 enum VisitEventType {
-  scheduled,
-  started,
-  qrVerified,
-  note,
-  photo,
-  completed,
-  cancelled,
+  scheduled('SCHEDULED'),
+  started('STARTED'),
+  qrVerified('QR_VERIFIED'),
+  note('NOTE'),
+  photo('PHOTO'),
+  completed('COMPLETED'),
+  cancelled('CANCELLED');
+
+  const VisitEventType(this.apiValue);
+  final String apiValue;
+
+  static VisitEventType fromApi(String value) =>
+      VisitEventType.values.firstWhere(
+        (t) => t.apiValue == value,
+        orElse: () => VisitEventType.note,
+      );
 }
+
+DateTime? _parseDate(Object? value) =>
+    value is String ? DateTime.parse(value).toLocal() : null;
 
 class VisitEvent {
   const VisitEvent({
@@ -27,6 +45,14 @@ class VisitEvent {
     required this.title,
     required this.timestamp,
   });
+
+  factory VisitEvent.fromJson(Map<String, dynamic> json) {
+    return VisitEvent(
+      type: VisitEventType.fromApi(json['type'] as String),
+      title: json['title'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String).toLocal(),
+    );
+  }
 
   final VisitEventType type;
   final String title;
@@ -40,6 +66,15 @@ class VisitNote {
     required this.text,
     required this.timestamp,
   });
+
+  factory VisitNote.fromJson(Map<String, dynamic> json) {
+    return VisitNote(
+      id: json['id'] as String,
+      author: json['author'] as String,
+      text: json['text'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String).toLocal(),
+    );
+  }
 
   final String id;
   final String author;
@@ -55,6 +90,16 @@ class VisitAttachment {
     required this.size,
     required this.uploaded,
   });
+
+  factory VisitAttachment.fromJson(Map<String, dynamic> json) {
+    return VisitAttachment(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      kind: json['kind'] as String,
+      size: json['size'] as String,
+      uploaded: DateTime.parse(json['uploaded'] as String).toLocal(),
+    );
+  }
 
   final String id;
   final String name;
@@ -73,6 +118,8 @@ class VisitItem {
     required this.status,
     required this.type,
     required this.purpose,
+    this.customerId = '',
+    this.employeeId = '',
     this.notes = const <VisitNote>[],
     this.attachments = const <VisitAttachment>[],
     this.events = const <VisitEvent>[],
@@ -81,9 +128,39 @@ class VisitItem {
     this.completedAt,
   });
 
+  factory VisitItem.fromJson(Map<String, dynamic> json) {
+    List<T> list<T>(Object? raw, T Function(Map<String, dynamic>) parse) => [
+      for (final item in raw as List<dynamic>)
+        parse(item as Map<String, dynamic>),
+    ];
+
+    return VisitItem(
+      id: json['id'] as String,
+      customer: json['customer'] as String,
+      customerId: json['customerId'] as String,
+      employee: json['employee'] as String,
+      employeeId: json['employeeId'] as String,
+      scheduledAt: DateTime.parse(json['scheduledAt'] as String).toLocal(),
+      location: json['location'] as String? ?? '',
+      status: VisitStatus.fromApi(json['status'] as String),
+      type: VisitType.fromApi(json['type'] as String),
+      purpose: json['purpose'] as String,
+      qrVerified: json['qrVerified'] as bool,
+      startedAt: _parseDate(json['startedAt']),
+      completedAt: _parseDate(json['completedAt']),
+      notes: list(json['notes'], VisitNote.fromJson),
+      attachments: list(json['attachments'], VisitAttachment.fromJson),
+      events: list(json['events'], VisitEvent.fromJson),
+    );
+  }
+
   final String id;
   final String customer;
   final String employee;
+
+  /// Backend ke ids. Mock mode me khaali hote hain.
+  final String customerId;
+  final String employeeId;
   final DateTime scheduledAt;
   final String location;
   final VisitStatus status;
@@ -119,7 +196,9 @@ class VisitItem {
     return VisitItem(
       id: id,
       customer: customer,
+      customerId: customerId,
       employee: employee,
+      employeeId: employeeId,
       scheduledAt: scheduledAt,
       location: location,
       status: status ?? this.status,
