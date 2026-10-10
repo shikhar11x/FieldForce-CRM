@@ -21,11 +21,15 @@ class MockTasks {
 
   static TaskFormOptions formOptions() {
     return TaskFormOptions(
-      customers: [for (final c in MockCustomers.all()) c.company],
-      employees: _employees,
+      customers: [
+        for (final c in MockCustomers.all())
+          FormOption(id: c.company, name: c.company),
+      ],
+      assignees: [
+        for (final e in _employees) FormOption(id: e, name: e),
+      ],
     );
   }
-
   static List<TaskItem> all() {
     return [
       TaskItem(

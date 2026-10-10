@@ -213,38 +213,13 @@ class MockCustomers {
             status: VisitStatus.completed,
           ),
       ],
-      tasks: c.status == CustomerStatus.inactive
-          ? const <CustomerTask>[]
-          : [
-              CustomerTask(
-                id: '${c.id}-t1',
-                title: 'Share revised price list',
-                due: _at(2, 17),
-                priority: TaskPriority.high,
-                status: TaskStatus.inProgress,
-              ),
-              CustomerTask(
-                id: '${c.id}-t2',
-                title: 'Collect pending payment',
-                due: _at(5, 12),
-                priority: TaskPriority.medium,
-                status: TaskStatus.pending,
-              ),
-              if (hasHistory)
-                CustomerTask(
-                  id: '${c.id}-t3',
-                  title: 'Send product catalogue',
-                  due: _at(-6, 17),
-                  priority: TaskPriority.low,
-                  status: TaskStatus.completed,
-                ),
-            ],
       notes: [
         if (c.highPriority)
           CustomerNote(
             id: '${c.id}-n2',
             author: 'Priya Sharma',
-            text: 'Priority account this quarter. Keep pricing '
+            text:
+                'Priority account this quarter. Keep pricing '
                 'discussions with the manager.',
             timestamp: _at(-3, 9, 30),
           ),
@@ -252,7 +227,8 @@ class MockCustomers {
           CustomerNote(
             id: '${c.id}-n1',
             author: emp,
-            text: 'Prefers morning visits. Decision maker is '
+            text:
+                'Prefers morning visits. Decision maker is '
                 '${c.contactName}.',
             timestamp: _at(-8, 12),
           ),
