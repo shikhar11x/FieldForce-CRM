@@ -19,8 +19,7 @@ class NavItem {
 /// Single source of truth for each role's bottom navigation / rail.
 ///
 /// Material guidance caps NavigationBar at 5 destinations, so Admin's
-/// "Reports" lives under "More" on phones. We can surface it as its own
-/// rail item on tablets later.
+/// "Reports" lives under "More" on phones.
 const Map<UserRole, List<NavItem>> roleNavigation = {
   UserRole.admin: [
     NavItem(

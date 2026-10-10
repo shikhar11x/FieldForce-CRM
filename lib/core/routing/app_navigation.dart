@@ -19,3 +19,13 @@ extension AppNavigation on BuildContext {
     GoRouter.of(this).push('${role.basePath}/settings');
   }
 }
+
+/// Path of the "new task" form for [role], optionally preselecting a
+/// customer. Admin has no Tasks section, so it returns null.
+String? newTaskPath(UserRole role, {String? customer}) {
+  if (role == UserRole.admin) return null;
+  final base = '${role.basePath}/tasks/new';
+  return customer == null
+      ? base
+      : '$base?customer=${Uri.encodeQueryComponent(customer)}';
+}

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../features/customers/screens/customer_form_screen.dart';
 import '../../features/more/screens/admin_more_screen.dart';
 import '../../features/users/screens/user_detail_screen.dart';
 import '../../features/users/screens/user_form_screen.dart';
@@ -137,11 +138,23 @@ Widget _screenFor(NavItem item) => switch (item.path) {
 /// Detail routes nested under a tab, so the navigation bar stays visible
 /// and tapping the tab again returns to the list.
 List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
+  // 'new' must be declared before ':id' so it isn't read as an id.
   '/admin/customers' || '/employee/customers' => <RouteBase>[
+    GoRoute(
+      path: 'new',
+      builder: (context, state) => const CustomerFormScreen(),
+    ),
     GoRoute(
       path: ':id',
       builder: (context, state) =>
           CustomerDetailScreen(customerId: state.pathParameters['id']!),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) =>
+              CustomerFormScreen(customerId: state.pathParameters['id']),
+        ),
+      ],
     ),
   ],
   // 'new' must be declared before ':id' so it isn't read as an id.
@@ -168,35 +181,29 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
     ),
   ],
   '/employee/profile' => _profileSubRoutes(),
-        // 'new' must be declared before ':id' so it isn't read as an id.
-      '/admin/users' => <RouteBase>[
-          GoRoute(
-            path: 'new',
-            builder: (context, state) => const UserFormScreen(),
-          ),
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => UserDetailScreen(
-              userId: state.pathParameters['id']!,
-            ),
-            routes: [
-              GoRoute(
-                path: 'edit',
-                builder: (context, state) => UserFormScreen(
-                  userId: state.pathParameters['id'],
-                ),
-              ),
-            ],
-          ),
-        ],
-      '/manager/team' => <RouteBase>[
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => UserDetailScreen(
-              userId: state.pathParameters['id']!,
-            ),
-          ),
-        ],
+  // 'new' must be declared before ':id' so it isn't read as an id.
+  '/admin/users' => <RouteBase>[
+    GoRoute(path: 'new', builder: (context, state) => const UserFormScreen()),
+    GoRoute(
+      path: ':id',
+      builder: (context, state) =>
+          UserDetailScreen(userId: state.pathParameters['id']!),
+      routes: [
+        GoRoute(
+          path: 'edit',
+          builder: (context, state) =>
+              UserFormScreen(userId: state.pathParameters['id']),
+        ),
+      ],
+    ),
+  ],
+  '/manager/team' => <RouteBase>[
+    GoRoute(
+      path: ':id',
+      builder: (context, state) =>
+          UserDetailScreen(userId: state.pathParameters['id']!),
+    ),
+  ],
   _ => const <RouteBase>[],
 };
 
