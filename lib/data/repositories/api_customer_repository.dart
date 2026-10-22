@@ -25,9 +25,8 @@ class ApiCustomerRepository implements CustomerRepository {
     final response = await _api.dio.get<Map<String, dynamic>>('/customers/$id');
     final data = response.data!;
 
-    final customer = Customer.fromJson(
-      data['customer'] as Map<String, dynamic>,
-    );
+    final customer =
+        Customer.fromJson(data['customer'] as Map<String, dynamic>);
     final notes = [
       for (final item in data['notes'] as List<dynamic>)
         CustomerNote.fromJson(item as Map<String, dynamic>),
