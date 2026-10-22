@@ -12,9 +12,9 @@ enum VisitType {
   final String apiValue;
 
   static VisitType fromApi(String value) => VisitType.values.firstWhere(
-    (t) => t.apiValue == value,
-    orElse: () => VisitType.sales,
-  );
+        (t) => t.apiValue == value,
+        orElse: () => VisitType.sales,
+      );
 }
 
 enum VisitEventType {
@@ -130,9 +130,9 @@ class VisitItem {
 
   factory VisitItem.fromJson(Map<String, dynamic> json) {
     List<T> list<T>(Object? raw, T Function(Map<String, dynamic>) parse) => [
-      for (final item in raw as List<dynamic>)
-        parse(item as Map<String, dynamic>),
-    ];
+          for (final item in raw as List<dynamic>)
+            parse(item as Map<String, dynamic>),
+        ];
 
     return VisitItem(
       id: json['id'] as String,

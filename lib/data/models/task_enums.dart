@@ -9,9 +9,9 @@ enum TaskPriority {
   final String apiValue;
 
   static TaskPriority fromApi(String value) => TaskPriority.values.firstWhere(
-    (p) => p.apiValue == value,
-    orElse: () => TaskPriority.medium,
-  );
+        (p) => p.apiValue == value,
+        orElse: () => TaskPriority.medium,
+      );
 }
 
 enum TaskStatus {
@@ -25,9 +25,9 @@ enum TaskStatus {
   final String apiValue;
 
   static TaskStatus fromApi(String value) => TaskStatus.values.firstWhere(
-    (s) => s.apiValue == value,
-    orElse: () => TaskStatus.pending,
-  );
+        (s) => s.apiValue == value,
+        orElse: () => TaskStatus.pending,
+      );
 }
 
 enum VisitStatus {
@@ -41,7 +41,7 @@ enum VisitStatus {
   final String apiValue;
 
   static VisitStatus fromApi(String value) => VisitStatus.values.firstWhere(
-    (s) => s.apiValue == value,
-    orElse: () => VisitStatus.scheduled,
-  );
+        (s) => s.apiValue == value,
+        orElse: () => VisitStatus.scheduled,
+      );
 }
