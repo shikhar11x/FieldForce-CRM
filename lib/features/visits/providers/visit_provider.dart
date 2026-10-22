@@ -59,15 +59,15 @@ class VisitsNotifier extends AsyncNotifier<List<VisitItem>> {
   }
 }
 
-final visitsProvider = AsyncNotifierProvider<VisitsNotifier, List<VisitItem>>(
+final visitsProvider =
+    AsyncNotifierProvider<VisitsNotifier, List<VisitItem>>(
   VisitsNotifier.new,
 );
 
 /// Employees only see their own visits; admins and managers see all.
 /// (Server already scopes this; the filter keeps mock mode consistent.)
-final scopedVisitsProvider = Provider.autoDispose<AsyncValue<List<VisitItem>>>((
-  ref,
-) {
+final scopedVisitsProvider =
+    Provider.autoDispose<AsyncValue<List<VisitItem>>>((ref) {
   final visits = ref.watch(visitsProvider);
   final user = ref.watch(authProvider).user;
 
