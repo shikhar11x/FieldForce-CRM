@@ -5,13 +5,33 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types.js';
+import { distanceMeters } from '../common/geo.js';
 import { customerScope } from '../customers/customer-scope.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { QrService } from '../qr/qr.service.js';
+import {
+  detectImage,
+  formatBytes,
+  type UploadedImage,
+} from '../storage/image-type.js';
+import { StorageService } from '../storage/storage.service.js';
 import { visitScope } from './visit-scope.js';
-import type { CreateVisitDto } from './visits.dto.js';
+import type { CreateVisitDto, ScanQrDto } from './visits.dto.js';
 
+/** Customer se is doori ke andar hi verify hota hai. */
 const GEOFENCE_METERS = 100;
+/** GPS reading isse kharab (zyada meters) ho to reject. */
+const MAX_ACCURACY_METERS = 75;
+const MAX_PHOTOS_PER_VISIT = 10;
+
+type ScanStatus =
+  | 'VERIFIED'
+  | 'LOCATION_MISMATCH'
+  | 'LOW_ACCURACY'
+  | 'CUSTOMER_NOT_LOCATED'
+  | 'NO_VISIT'
+  | 'INVALID_CODE';
 
 const VISIT_SELECT = {
   id: true,
@@ -37,7 +57,14 @@ const VISIT_SELECT = {
     orderBy: { createdAt: 'desc' },
   },
   attachments: {
-    select: { id: true, name: true, kind: true, size: true, uploadedAt: true },
+    select: {
+      id: true,
+      name: true,
+      kind: true,
+      size: true,
+      uploadedAt: true,
+      storageKey: true,
+    },
     orderBy: { uploadedAt: 'asc' },
   },
   events: {
@@ -75,6 +102,8 @@ function toDto(v: VisitRow) {
       kind: a.kind,
       size: a.size,
       uploaded: a.uploadedAt.toISOString(),
+      // storageKey kabhi bahar nahi jaata, sirf ye batata hai ki file hai ya nahi.
+      hasFile: a.storageKey !== null,
     })),
     events: v.events.map((e) => ({
       type: e.type,
@@ -86,7 +115,11 @@ function toDto(v: VisitRow) {
 
 @Injectable()
 export class VisitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+    private readonly qr: QrService,
+  ) {}
 
   async findAll(actor: AuthUser) {
     const rows = await this.prisma.visit.findMany({
@@ -211,56 +244,168 @@ export class VisitsService {
     return this.findOne(actor, id);
   }
 
-  /** Abhi sirf placeholder record. Asli file upload baad ke step me. */
-  async addPhoto(actor: AuthUser, id: string) {
+  async addPhoto(actor: AuthUser, id: string, file: UploadedImage | undefined) {
     const visit = await this.loadAsAssignee(actor, id);
     if (visit.status !== 'STARTED') {
       throw new BadRequestException('Start the visit before adding photos.');
+    }
+    if (!file || file.size === 0) {
+      throw new BadRequestException('Attach a photo in the "file" field.');
+    }
+
+    // Type file ke bytes se pehchanta hai, client ke bataye naam se nahi.
+    const image = detectImage(file.buffer);
+    if (!image) {
+      throw new BadRequestException('Only JPEG, PNG or WebP images are allowed.');
     }
 
     const count = await this.prisma.visitAttachment.count({
       where: { visitId: id },
     });
-    await this.prisma.$transaction([
-      this.prisma.visitAttachment.create({
-        data: {
-          visitId: id,
-          name: `Visit photo ${count + 1}.jpg`,
-          kind: 'Photo',
-          size: '1.9 MB',
-        },
-      }),
-      this.prisma.visitEvent.create({
-        data: { visitId: id, type: 'PHOTO', title: 'Photo uploaded' },
-      }),
-    ]);
-    return this.findOne(actor, id);
-  }
-
-  /**
-   * TEMPORARY: server sirf assignee aur app se aayi distance check karta hai.
-   * Asli QR (signed customer code) aur GPS verification Step 22 me aayega.
-   */
-  async verifyQr(actor: AuthUser, id: string, distanceMeters: number) {
-    const visit = await this.loadAsAssignee(actor, id);
-    if (visit.status !== 'SCHEDULED' && visit.status !== 'STARTED') {
-      throw new BadRequestException('This visit is no longer active.');
-    }
-    if (visit.qrVerified) return this.findOne(actor, id);
-
-    if (distanceMeters > GEOFENCE_METERS) {
+    if (count >= MAX_PHOTOS_PER_VISIT) {
       throw new BadRequestException(
-        `You are too far from the customer (${distanceMeters} m, limit ${GEOFENCE_METERS} m).`,
+        `A visit can have at most ${MAX_PHOTOS_PER_VISIT} photos.`,
       );
     }
 
+    const key = this.storage.newKey(`visits/${id}`, image.ext);
+    await this.storage.save(key, file.buffer);
+
+    try {
+      await this.prisma.$transaction([
+        this.prisma.visitAttachment.create({
+          data: {
+            visitId: id,
+            name: `Visit photo ${count + 1}.${image.ext}`,
+            kind: 'Photo',
+            size: formatBytes(file.size),
+            storageKey: key,
+            mimeType: image.mime,
+            sizeBytes: file.size,
+          },
+        }),
+        this.prisma.visitEvent.create({
+          data: { visitId: id, type: 'PHOTO', title: 'Photo uploaded' },
+        }),
+      ]);
+    } catch (error) {
+      // Database fail ho to disk par bachi file saaf kar do.
+      await this.storage.remove(key);
+      throw error;
+    }
+    return this.findOne(actor, id);
+  }
+
+  async getPhoto(actor: AuthUser, id: string, photoId: string) {
+    const attachment = await this.prisma.visitAttachment.findFirst({
+      where: { id: photoId, visit: { ...visitScope(actor), id } },
+      select: { storageKey: true, mimeType: true },
+    });
+    if (!attachment?.storageKey || !attachment.mimeType) {
+      throw new NotFoundException('Photo not found.');
+    }
+
+    const file = await this.storage.open(attachment.storageKey);
+    return { ...file, mime: attachment.mimeType };
+  }
+
+  /**
+   * Customer ka signed QR + device ki GPS location. Server khud code check
+   * karta hai, visit dhundta hai aur doori nikalta hai. Business ke nateeje
+   * (galat code, door, visit nahi...) 200 ke saath `status` me aate hain.
+   */
+  async scanQr(actor: AuthUser, dto: ScanQrDto) {
+    const accuracy = Math.round(dto.accuracyMeters);
+    const result = (
+      status: ScanStatus,
+      extra: Record<string, unknown> = {},
+    ) => ({
+      status,
+      geofenceMeters: GEOFENCE_METERS,
+      accuracyMeters: accuracy,
+      ...extra,
+    });
+
+    const customerId = this.qr.parse(dto.qrPayload);
+    if (!customerId) return result('INVALID_CODE');
+
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, organizationId: actor.organizationId },
+      select: { id: true, company: true, address: true, latitude: true, longitude: true },
+    });
+    if (!customer) return result('INVALID_CODE');
+
+    // Sirf actor ke apne active visits, chahe customer ab kisi aur ko assigned ho.
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        organizationId: actor.organizationId,
+        assignedToId: actor.id,
+        customerId,
+        status: { in: ['SCHEDULED', 'STARTED'] },
+      },
+      orderBy: { scheduledAt: 'asc' },
+      select: {
+        id: true,
+        status: true,
+        purpose: true,
+        scheduledAt: true,
+        qrVerified: true,
+      },
+    });
+
+    const customerInfo = {
+      customerName: customer.company,
+      address: customer.address,
+    };
+    const visit = visits.find((v) => v.status === 'STARTED') ?? visits[0];
+    if (!visit) return result('NO_VISIT', customerInfo);
+
+    const visitInfo = {
+      ...customerInfo,
+      visitId: visit.id,
+      visitPurpose: visit.purpose,
+      visitScheduledAt: visit.scheduledAt.toISOString(),
+    };
+
+    if (visit.qrVerified) return result('VERIFIED', visitInfo);
+    if (customer.latitude === null || customer.longitude === null) {
+      return result('CUSTOMER_NOT_LOCATED', visitInfo);
+    }
+    if (accuracy > MAX_ACCURACY_METERS) return result('LOW_ACCURACY', visitInfo);
+
+    const distance = Math.round(
+      distanceMeters(
+        dto.latitude,
+        dto.longitude,
+        customer.latitude,
+        customer.longitude,
+      ),
+    );
+    if (distance > GEOFENCE_METERS) {
+      return result('LOCATION_MISMATCH', { ...visitInfo, distanceMeters: distance });
+    }
+
     await this.prisma.$transaction([
-      this.prisma.visit.update({ where: { id }, data: { qrVerified: true } }),
+      this.prisma.visit.update({
+        where: { id: visit.id },
+        data: {
+          qrVerified: true,
+          qrVerifiedAt: new Date(),
+          verifyDistanceM: distance,
+          verifyAccuracyM: accuracy,
+          verifyLatitude: dto.latitude,
+          verifyLongitude: dto.longitude,
+        },
+      }),
       this.prisma.visitEvent.create({
-        data: { visitId: id, type: 'QR_VERIFIED', title: 'QR code verified' },
+        data: {
+          visitId: visit.id,
+          type: 'QR_VERIFIED',
+          title: 'QR code verified',
+        },
       }),
     ]);
-    return this.findOne(actor, id);
+    return result('VERIFIED', { ...visitInfo, distanceMeters: distance });
   }
 
   private async load(actor: AuthUser, id: string) {
@@ -281,9 +426,7 @@ export class VisitsService {
   private async loadAsAssignee(actor: AuthUser, id: string) {
     const visit = await this.load(actor, id);
     if (visit.assignedToId !== actor.id) {
-      throw new ForbiddenException(
-        'Only the assigned employee can do this.',
-      );
+      throw new ForbiddenException('Only the assigned employee can do this.');
     }
     return visit;
   }
