@@ -1,13 +1,23 @@
 enum AttendanceDayStatus {
-  present('Present'),
-  lateIn('Late'),
-  halfDay('Half day'),
-  absent('Absent'),
-  weekOff('Week off');
+  present('Present', 'PRESENT'),
+  lateIn('Late', 'LATE'),
+  halfDay('Half day', 'HALF_DAY'),
+  absent('Absent', 'ABSENT'),
+  weekOff('Week off', 'WEEK_OFF');
 
-  const AttendanceDayStatus(this.label);
+  const AttendanceDayStatus(this.label, this.apiValue);
   final String label;
+  final String apiValue;
+
+  static AttendanceDayStatus fromApi(String value) =>
+      AttendanceDayStatus.values.firstWhere(
+        (s) => s.apiValue == value,
+        orElse: () => AttendanceDayStatus.absent,
+      );
 }
+
+DateTime? _parseTime(Object? value) =>
+    value is String ? DateTime.parse(value).toLocal() : null;
 
 class AttendanceRecord {
   const AttendanceRecord({
@@ -16,6 +26,16 @@ class AttendanceRecord {
     this.checkIn,
     this.checkOut,
   });
+
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecord(
+      // 'YYYY-MM-DD' local midnight ban jaata hai.
+      date: DateTime.parse(json['date'] as String),
+      status: AttendanceDayStatus.fromApi(json['status'] as String),
+      checkIn: _parseTime(json['checkIn']),
+      checkOut: _parseTime(json['checkOut']),
+    );
+  }
 
   /// Date only (midnight, local time).
   final DateTime date;
@@ -72,6 +92,17 @@ class AttendanceSummary {
     );
   }
 
+  factory AttendanceSummary.fromJson(Map<String, dynamic> json) {
+    int n(String key) => (json[key] as num).toInt();
+    return AttendanceSummary(
+      presentDays: n('presentDays'),
+      lateDays: n('lateDays'),
+      halfDays: n('halfDays'),
+      absentDays: n('absentDays'),
+      totalWorked: Duration(minutes: n('workedMinutes')),
+    );
+  }
+
   final int presentDays;
   final int lateDays;
   final int halfDays;
@@ -95,6 +126,20 @@ class TeamAttendanceEntry {
     required this.summary,
   });
 
+  factory TeamAttendanceEntry.fromJson(Map<String, dynamic> json) {
+    final today = json['today'];
+    return TeamAttendanceEntry(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      designation: json['designation'] as String,
+      today: today == null
+          ? null
+          : AttendanceRecord.fromJson(today as Map<String, dynamic>),
+      summary:
+          AttendanceSummary.fromJson(json['summary'] as Map<String, dynamic>),
+    );
+  }
+
   final String id;
   final String name;
   final String designation;
@@ -102,4 +147,39 @@ class TeamAttendanceEntry {
 
   /// Summary of the current month.
   final AttendanceSummary summary;
+}
+
+enum AttendanceStatus { notCheckedIn, checkedIn, checkedOut }
+
+/// Employee ka aaj ka check-in / check-out.
+class TodayAttendance {
+  const TodayAttendance({
+    this.status = AttendanceStatus.notCheckedIn,
+    this.checkIn,
+    this.checkOut,
+  });
+
+  factory TodayAttendance.fromJson(Map<String, dynamic> json) {
+    final checkIn = _parseTime(json['checkIn']);
+    final checkOut = _parseTime(json['checkOut']);
+    return TodayAttendance(
+      status: checkOut != null
+          ? AttendanceStatus.checkedOut
+          : (checkIn != null
+              ? AttendanceStatus.checkedIn
+              : AttendanceStatus.notCheckedIn),
+      checkIn: checkIn,
+      checkOut: checkOut,
+    );
+  }
+
+  final AttendanceStatus status;
+  final DateTime? checkIn;
+  final DateTime? checkOut;
+
+  Duration get workedDuration {
+    final start = checkIn;
+    if (start == null) return Duration.zero;
+    return (checkOut ?? DateTime.now()).difference(start);
+  }
 }
