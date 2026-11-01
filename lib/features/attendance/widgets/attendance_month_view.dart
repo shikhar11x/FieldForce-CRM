@@ -17,8 +17,18 @@ import 'attendance_history_list.dart';
 import 'attendance_layout.dart';
 
 const _monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// Month switcher, summary, calendar and daily log for one employee.
@@ -27,10 +37,14 @@ class AttendanceMonthView extends ConsumerStatefulWidget {
   const AttendanceMonthView({
     super.key,
     required this.employee,
+    this.employeeId,
     this.isSelf = false,
   });
 
   final String employee;
+
+  /// Backend ka employee id. Null = logged-in employee khud.
+  final String? employeeId;
   final bool isSelf;
 
   @override
@@ -61,17 +75,18 @@ class _AttendanceMonthViewState extends ConsumerState<AttendanceMonthView> {
   Widget build(BuildContext context) {
     final query = (
       employee: widget.employee,
+      employeeId: widget.employeeId,
       year: _month.year,
       month: _month.month,
     );
     final records = ref.watch(attendanceMonthProvider(query));
-    final TodayAttendance? today =
-        widget.isSelf ? ref.watch(todayAttendanceProvider) : null;
+    final TodayAttendance? today = widget.isSelf
+        ? ref.watch(todayAttendanceProvider)
+        : null;
 
     final merged = records.whenData(
-      (list) => (today != null && _isCurrentMonth)
-          ? mergeToday(list, today)
-          : list,
+      (list) =>
+          (today != null && _isCurrentMonth) ? mergeToday(list, today) : list,
     );
 
     return Column(
@@ -196,11 +211,7 @@ class _MonthContent extends StatelessWidget {
         ),
         const SectionHeader(title: 'Calendar'),
         AppCard(
-          child: AttendanceCalendar(
-            year: year,
-            month: month,
-            records: records,
-          ),
+          child: AttendanceCalendar(year: year, month: month, records: records),
         ),
         const SectionHeader(title: 'Daily log'),
         AttendanceHistoryList(records: records),
