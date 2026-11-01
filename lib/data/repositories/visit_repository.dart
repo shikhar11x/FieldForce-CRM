@@ -7,8 +7,4 @@ abstract class VisitRepository {
   Future<VisitItem> completeVisit(VisitItem visit);
   Future<VisitItem> addNote(VisitItem visit, String author, String text);
   Future<VisitItem> addPhoto(VisitItem visit);
-  Future<VisitItem> markQrVerified(
-    VisitItem visit, {
-    required int distanceMeters,
-  });
 }
