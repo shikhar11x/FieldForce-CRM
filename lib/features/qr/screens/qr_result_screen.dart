@@ -51,6 +51,8 @@ class _ResultContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final distance = result.distanceMeters;
+    final accuracy = result.accuracyMeters;
 
     final (icon, color, title, message) = switch (result.status) {
       QrVerificationStatus.verified => (
@@ -62,9 +64,22 @@ class _ResultContent extends StatelessWidget {
       QrVerificationStatus.locationMismatch => (
           Icons.wrong_location_rounded,
           AppColors.warning,
-          'Location mismatch',
-          'The code is valid, but you are too far from the customer. '
-              'Move closer and scan again.',
+          'Too far from the customer',
+          'You are about ${distance ?? '?'} m away (limit '
+              '${result.geofenceMeters} m). Move closer and scan again.',
+        ),
+      QrVerificationStatus.lowAccuracy => (
+          Icons.gps_not_fixed_rounded,
+          AppColors.warning,
+          'GPS signal is too weak',
+          'Your location is only accurate to about ${accuracy ?? '?'} m. '
+              'Step outside or near a window, wait a few seconds and scan again.',
+        ),
+      QrVerificationStatus.customerNotLocated => (
+          Icons.location_off_rounded,
+          AppColors.info,
+          "Customer location isn't set",
+          'Ask a manager or admin to add this customer\'s location, then try again.',
         ),
       QrVerificationStatus.noVisit => (
           Icons.event_busy_rounded,
@@ -76,7 +91,7 @@ class _ResultContent extends StatelessWidget {
           Icons.error_outline_rounded,
           AppColors.error,
           'Unrecognised QR code',
-          'This is not a FieldForce customer code. Try scanning again.',
+          'This is not a valid FieldForce customer code. Try again.',
         ),
     };
 
@@ -84,7 +99,6 @@ class _ResultContent extends StatelessWidget {
     final address = result.address;
     final purpose = result.visitPurpose;
     final scheduled = result.visitScheduledAt;
-    final distance = result.distanceMeters;
     final visitId = result.visitId;
     final scannedTime =
         TimeOfDay.fromDateTime(result.scannedAt).format(context);
@@ -104,7 +118,11 @@ class _ResultContent extends StatelessWidget {
                 child: Icon(icon, size: 44, color: color),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(title, style: theme.textTheme.titleLarge),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge,
+              ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 message,
@@ -146,20 +164,20 @@ class _ResultContent extends StatelessWidget {
                 DetailRow(
                   icon: Icons.social_distance_rounded,
                   label: 'Distance from customer',
-                  value: '$distance m '
-                      '(limit ${QrScanResult.geofenceMeters} m)',
+                  value: '$distance m (limit ${result.geofenceMeters} m)',
                 ),
-              DetailRow(
-                icon: Icons.verified_user_outlined,
-                label: 'Verification',
-                value: result.status.label,
-              ),
+              if (accuracy != null)
+                DetailRow(
+                  icon: Icons.gps_fixed_rounded,
+                  label: 'GPS accuracy',
+                  value: 'about $accuracy m',
+                ),
               DetailRow(
                 icon: Icons.schedule_rounded,
                 label: 'Scanned at',
                 value: scannedTime,
               ),
-              if (customer == null && address == null)
+              if (customer == null)
                 const DetailRow(
                   icon: Icons.info_outline_rounded,
                   label: 'Customer',
