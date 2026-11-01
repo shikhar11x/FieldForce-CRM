@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../providers/today_attendance_provider.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/responsive_body.dart';
 import '../../dashboard/widgets/attendance_status_card.dart';
@@ -16,6 +16,7 @@ class MyAttendanceView extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(attendanceMonthProvider);
+    ref.invalidate(todayAttendanceProvider);
     // The month provider reloads when watched; this just gives feedback.
     await Future<void>.delayed(const Duration(milliseconds: 400));
   }
