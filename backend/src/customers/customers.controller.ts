@@ -8,7 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types.js';
-import { CurrentUser } from '../auth/decorators.js';
+import { CurrentUser, Roles } from '../auth/decorators.js';
 import {
   CreateCustomerDto,
   CreateNoteDto,
@@ -16,7 +16,7 @@ import {
 } from './customers.dto.js';
 import { CustomersService } from './customers.service.js';
 
-// Teeno roles ke liye khula hai. Kaun kya dekhe, ye service ka scope() tay karta hai.
+// Zyada tar routes teeno roles ke liye khule hain. Kaun kya dekhe, ye service ka scope() tay karta hai.
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}
@@ -32,6 +32,17 @@ export class CustomersController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.customers.findOne(actor, id);
+  }
+
+  // Employees QR nahi nikal sakte, warna wo apne phone par hi scan karke
+  // visit "verify" kar lete.
+  @Roles('ADMIN', 'MANAGER')
+  @Get(':id/qr')
+  qr(
+    @CurrentUser() actor: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.customers.qrPayload(actor, id);
   }
 
   @Post()
