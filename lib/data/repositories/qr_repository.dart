@@ -1,11 +1,10 @@
-import '../models/customer_models.dart';
+import '../../core/location/device_location.dart';
+import '../models/qr_models.dart';
 
-/// Phase 2 swaps the mock implementation for an API-backed one.
 abstract class QrRepository {
-  /// Returns the customer a QR payload belongs to, or null if the code
-  /// is not a valid FieldForce customer code.
-  Future<Customer?> resolveCustomer(String payload);
+  /// Server code check karta hai, visit dhundta hai aur doori nikalta hai.
+  Future<QrScanResult> scan({required String payload, required DeviceFix fix});
 
-  /// Distance between the device and the customer's location.
-  Future<int> distanceToCustomerMeters(String payload);
+  /// Customer ka signed QR payload (sirf admin / manager).
+  Future<String> customerPayload(String customerId);
 }
