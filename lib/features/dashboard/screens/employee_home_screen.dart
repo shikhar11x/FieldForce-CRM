@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../attendance/attendance_actions.dart';
 import '../../../core/extensions/animate_extensions.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_colors.dart';
@@ -61,8 +61,7 @@ class _EmployeeContent extends ConsumerWidget {
     void checkIn() {
       final status = ref.read(todayAttendanceProvider).status;
       if (status == AttendanceStatus.notCheckedIn) {
-        ref.read(todayAttendanceProvider.notifier).checkIn();
-        context.showSnack('Checked in. Have a productive day!');
+        performCheckIn(context, ref);
       } else {
         context.showSnack('You have already checked in today.');
       }
