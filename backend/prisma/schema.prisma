@@ -63,11 +63,12 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
-  users     User[]
-  teams     Team[]
-  customers Customer[]
-  tasks     Task[]
-  visits    Visit[]
+  users      User[]
+  teams      Team[]
+  customers  Customer[]
+  tasks      Task[]
+  visits     Visit[]
+  attendance Attendance[]
 
   @@map("organizations")
 }
@@ -114,6 +115,7 @@ model User {
   assignedVisits    Visit[]        @relation("AssignedVisits")
   createdVisits     Visit[]        @relation("CreatedVisits")
   visitNotes        VisitNote[]
+  attendance        Attendance[]
 
   @@index([organizationId, role])
   @@index([managerId])
@@ -288,4 +290,32 @@ model VisitEvent {
 
   @@index([visitId, createdAt])
   @@map("visit_events")
+}
+
+/// Ek employee ka ek din. Status (Present, Late, Half day, Absent) store nahi
+/// hota, wo hamesha times se nikalta hai, taaki rules badalne par purana
+/// data bhi sahi dikhe.
+model Attendance {
+  id               String    @id @default(uuid())
+  organizationId   String
+  userId           String
+  /// Office timezone ke hisaab se din.
+  date             DateTime  @db.Date
+  checkInAt        DateTime
+  checkInLatitude  Float
+  checkInLongitude Float
+  checkInAccuracyM Int
+  checkOutAt       DateTime?
+  checkOutLatitude  Float?
+  checkOutLongitude Float?
+  checkOutAccuracyM Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([organizationId, date])
+  @@map("attendance_records")
 }
