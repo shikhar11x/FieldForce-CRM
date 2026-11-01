@@ -65,6 +65,20 @@ const CUSTOMERS: SeedCustomer[] = [
   { company: 'Urban Cafe Chain', contactName: 'Tanya Arora', phone: '+91 98100 11010', email: 'tanya@urbancafe.in', address: '2, City Centre Mall', status: 'NEW', assignee: 'sneha.reddy@fieldforce.com', highPriority: true, nextVisitDays: 2 },
 ];
 
+// Customers ke coordinates (verification ke liye). Pehle se seeded customers me bhi backfill hote hain.
+const CUSTOMER_COORDS: Record<string, [number, number]> = {
+  'Metro Hardware': [28.896, 76.607],
+  'Sunrise Traders': [28.9012, 76.6021],
+  'Greenfield Foods': [28.889, 76.615],
+  'Apex Pharma': [28.9035, 76.6102],
+  'Bright Electricals': [28.8921, 76.5988],
+  'Lotus Stationers': [28.8985, 76.6043],
+  'Kisan Agro Supplies': [28.9078, 76.619],
+  'Ocean Logistics': [28.884, 76.612],
+  'Silverline Textiles': [28.895, 76.595],
+  'Urban Cafe Chain': [28.9001, 76.608],
+};
+
 function daysFromNow(days: number, hour = 11): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, hour, 0);
@@ -335,6 +349,17 @@ async function main() {
     }
     console.log(`Seeded ${created} visits.`);
   }
+
+  // Jin customers ke coordinates abhi null hain, unhe bhar do.
+  let located = 0;
+  for (const [company, [latitude, longitude]] of Object.entries(CUSTOMER_COORDS)) {
+    const result = await prisma.customer.updateMany({
+      where: { organizationId: organization.id, company, latitude: null },
+      data: { latitude, longitude },
+    });
+    located += result.count;
+  }
+  if (located > 0) console.log(`Set coordinates for ${located} customers.`);
 
   console.log(`Seeded ${USERS.length} users in "${organization.name}".`);
 }
