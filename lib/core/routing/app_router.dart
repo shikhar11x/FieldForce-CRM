@@ -2,7 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/widgets.dart';
-
+import '../../features/customers/screens/customer_qr_screen.dart';
 import '../../features/customers/screens/customer_form_screen.dart';
 import '../../features/more/screens/admin_more_screen.dart';
 import '../../features/users/screens/user_detail_screen.dart';
@@ -153,6 +153,12 @@ List<RouteBase> _subRoutesFor(NavItem item) => switch (item.path) {
           path: 'edit',
           builder: (context, state) =>
               CustomerFormScreen(customerId: state.pathParameters['id']),
+        ),
+        GoRoute(
+          path: 'qr',
+          builder: (context, state) => CustomerQrScreen(
+            customerId: state.pathParameters['id']!,
+          ),
         ),
       ],
     ),
