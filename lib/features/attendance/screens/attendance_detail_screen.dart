@@ -90,7 +90,7 @@ class _DetailContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        AttendanceMonthView(employee: entry.name),
+        AttendanceMonthView(employee: entry.name, employeeId: entry.id),
       ],
     );
   }
