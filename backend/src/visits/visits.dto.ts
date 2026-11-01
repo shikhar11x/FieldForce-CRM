@@ -2,7 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   IsDateString,
   IsIn,
-  IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -58,10 +58,26 @@ export class VisitNoteDto {
   text: string;
 }
 
-export class VerifyQrDto {
-  /** Abhi app se aati hai. Step 22 me server khud GPS se nikalega. */
-  @IsInt()
+/** QR scan + device ki location. Doori server khud nikalta hai. */
+export class ScanQrDto {
+  @IsString()
+  @MinLength(10)
+  @MaxLength(300)
+  qrPayload: string;
+
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude: number;
+
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude: number;
+
+  /** GPS reading ki accuracy (meters). */
+  @IsNumber()
   @Min(0)
   @Max(100000)
-  distanceMeters: number;
+  accuracyMeters: number;
 }
