@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../attendance/attendance_actions.dart';
 import '../../attendance/providers/today_attendance_provider.dart';
 
 class AttendanceStatusCard extends ConsumerWidget {
@@ -19,7 +19,7 @@ class AttendanceStatusCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final today = ref.watch(todayAttendanceProvider);
-    final notifier = ref.read(todayAttendanceProvider.notifier);
+    final busy = ref.watch(attendanceBusyProvider);
 
     final (title, subtitle, color, icon) = switch (today.status) {
       AttendanceStatus.notCheckedIn => (
@@ -45,19 +45,23 @@ class AttendanceStatusCard extends ConsumerWidget {
 
     final Widget? action = switch (today.status) {
       AttendanceStatus.notCheckedIn => FilledButton.icon(
-          onPressed: () {
-            notifier.checkIn();
-            context.showSnack('Checked in. Have a productive day!');
-          },
-          icon: const Icon(Icons.login_rounded),
+          onPressed: busy ? null : () => performCheckIn(context, ref),
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.login_rounded),
           label: const Text('Check In'),
         ),
       AttendanceStatus.checkedIn => FilledButton.tonalIcon(
-          onPressed: () {
-            notifier.checkOut();
-            context.showSnack('Checked out. See you tomorrow!');
-          },
-          icon: const Icon(Icons.logout_rounded),
+          onPressed: busy ? null : () => performCheckOut(context, ref),
+          icon: busy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.logout_rounded),
           label: const Text('Check Out'),
         ),
       AttendanceStatus.checkedOut => null,
