@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/models/user_role.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/responsive_body.dart';
@@ -35,6 +36,13 @@ class CustomerDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           title: Text(detail.value?.customer.company ?? 'Customer'),
           actions: [
+            if (detail.hasValue && role == UserRole.admin)
+              IconButton(
+                tooltip: 'QR code',
+                icon: const Icon(Icons.qr_code_2_rounded),
+                onPressed: () =>
+                    context.go('${role.basePath}/customers/$customerId/qr'),
+              ),
             if (detail.hasValue)
               IconButton(
                 tooltip: 'Edit customer',
