@@ -48,15 +48,6 @@ class VisitsNotifier extends AsyncNotifier<List<VisitItem>> {
   /// Phase 1/2: placeholder photo. Asli upload baad ke step me.
   Future<void> addPhoto(VisitItem visit) async =>
       _replace(await _repo.addPhoto(visit));
-
-  /// Marks the visit as QR verified (idempotent).
-  Future<void> markQrVerified(
-    VisitItem visit, {
-    required int distanceMeters,
-  }) async {
-    if (visit.qrVerified) return;
-    _replace(await _repo.markQrVerified(visit, distanceMeters: distanceMeters));
-  }
 }
 
 final visitsProvider =
