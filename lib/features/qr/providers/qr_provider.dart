@@ -1,79 +1,44 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/api_config.dart';
+import '../../../core/location/device_location.dart';
+import '../../../core/network/api_providers.dart';
 import '../../../data/models/qr_models.dart';
-import '../../../data/models/task_enums.dart';
-import '../../../data/models/visit_models.dart';
+import '../../../data/repositories/api_qr_repository.dart';
 import '../../../data/repositories/mock_qr_repository.dart';
 import '../../../data/repositories/qr_repository.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../visits/providers/visit_provider.dart';
 
-final qrRepositoryProvider = Provider<QrRepository>(
-  (ref) => MockQrRepository(),
-);
+final qrRepositoryProvider = Provider<QrRepository>((ref) {
+  if (ApiConfig.useMockAuth) return MockQrRepository();
+  return ApiQrRepository(ref.watch(apiClientProvider));
+});
 
 /// Holds the latest scan result so the result screen can display it.
 class QrScanNotifier extends Notifier<QrScanResult?> {
   @override
   QrScanResult? build() => null;
 
-  /// Verifies a scanned [payload] for [employee]:
-  /// valid code, an active visit for that customer, and within range.
-  Future<QrScanResult> scan(String payload, String employee) async {
-    final repo = ref.read(qrRepositoryProvider);
-    final now = DateTime.now();
+  Future<QrScanResult> scan(String payload, DeviceFix fix) async {
+    final result =
+        await ref.read(qrRepositoryProvider).scan(payload: payload, fix: fix);
+    state = result;
 
-    final customer = await repo.resolveCustomer(payload);
-    if (customer == null) {
-      return state = QrScanResult(
-        status: QrVerificationStatus.invalid,
-        scannedAt: now,
-      );
+    // Server ne visit ko verified mark kiya ho to visit list taaza karo.
+    if (result.status == QrVerificationStatus.verified) {
+      ref.invalidate(visitsProvider);
     }
-
-    final visits = await ref.read(visitsProvider.future);
-    VisitItem? visit;
-    for (final v in visits) {
-      final active =
-          v.status == VisitStatus.scheduled || v.status == VisitStatus.started;
-      if (active && v.employee == employee && v.customer == customer.company) {
-        visit = v;
-        break;
-      }
-    }
-
-    if (visit == null) {
-      return state = QrScanResult(
-        status: QrVerificationStatus.noVisit,
-        scannedAt: now,
-        customerName: customer.company,
-        address: customer.address,
-      );
-    }
-
-    final distance = await repo.distanceToCustomerMeters(payload);
-    final withinRange = distance <= QrScanResult.geofenceMeters;
-
-    if (withinRange) {
-      await ref
-          .read(visitsProvider.notifier)
-          .markQrVerified(visit, distanceMeters: distance);
-    }
-
-    return state = QrScanResult(
-      status: withinRange
-          ? QrVerificationStatus.verified
-          : QrVerificationStatus.locationMismatch,
-      scannedAt: now,
-      customerName: customer.company,
-      address: visit.location,
-      visitId: visit.id,
-      visitPurpose: visit.purpose,
-      visitScheduledAt: visit.scheduledAt,
-      distanceMeters: distance,
-    );
+    return result;
   }
 }
 
-final qrScanProvider = NotifierProvider<QrScanNotifier, QrScanResult?>(
-  QrScanNotifier.new,
-);
+final qrScanProvider =
+    NotifierProvider<QrScanNotifier, QrScanResult?>(QrScanNotifier.new);
+
+/// Customer ka QR payload (admin / manager ke QR screen ke liye).
+final customerQrPayloadProvider =
+    FutureProvider.autoDispose.family<String, String>((ref, customerId) {
+  ref.watch(authProvider.select((s) => s.user?.id));
+  return ref.watch(qrRepositoryProvider).customerPayload(customerId);
+});
