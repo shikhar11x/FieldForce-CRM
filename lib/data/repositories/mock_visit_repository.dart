@@ -103,23 +103,4 @@ class MockVisitRepository implements VisitRepository {
     );
   }
 
-  @override
-  Future<VisitItem> markQrVerified(
-    VisitItem visit, {
-    required int distanceMeters,
-  }) async {
-    if (visit.qrVerified) return visit;
-    await _latency();
-    return visit.copyWith(
-      qrVerified: true,
-      events: [
-        ...visit.events,
-        VisitEvent(
-          type: VisitEventType.qrVerified,
-          title: 'QR code verified',
-          timestamp: DateTime.now(),
-        ),
-      ],
-    );
-  }
 }
