@@ -34,14 +34,6 @@ class ApiVisitRepository implements VisitRepository {
   @override
   Future<VisitItem> addPhoto(VisitItem visit) => _post(visit, 'photos');
 
-  @override
-  Future<VisitItem> markQrVerified(
-    VisitItem visit, {
-    required int distanceMeters,
-  }) {
-    return _post(visit, 'verify-qr', data: {'distanceMeters': distanceMeters});
-  }
-
   Future<VisitItem> _post(
     VisitItem visit,
     String action, {
