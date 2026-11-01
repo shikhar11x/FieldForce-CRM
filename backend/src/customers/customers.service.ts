@@ -1,4 +1,3 @@
-import { customerScope } from './customer-scope.js';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,7 +7,9 @@ import {
 import type { AuthUser } from '../auth/auth.types.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { QrService } from '../qr/qr.service.js';
 import { visitScope } from '../visits/visit-scope.js';
+import { customerScope } from './customer-scope.js';
 import type {
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -24,6 +25,8 @@ const CUSTOMER_SELECT = {
   status: true,
   highPriority: true,
   assignedToId: true,
+  latitude: true,
+  longitude: true,
   lastVisitAt: true,
   nextVisitAt: true,
   createdAt: true,
@@ -52,6 +55,8 @@ function toDto(c: CustomerRow) {
     highPriority: c.highPriority,
     assignedEmployeeId: c.assignedToId,
     assignedEmployee: c.assignedTo?.name ?? null,
+    // Coordinates bahar nahi jaate, sirf ye batata hai ki set hain ya nahi.
+    hasLocation: c.latitude !== null && c.longitude !== null,
     lastVisit: c.lastVisitAt?.toISOString() ?? null,
     nextVisit: c.nextVisitAt?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
@@ -69,16 +74,14 @@ function toNoteDto(n: NoteRow) {
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /** Admin: sab. Manager: apne + apni team ke. Employee: sirf apne. */
-   private scope(actor: AuthUser): Prisma.CustomerWhereInput {
-    return customerScope(actor);
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly qr: QrService,
+  ) {}
 
   async findAll(actor: AuthUser) {
     const rows = await this.prisma.customer.findMany({
-      where: this.scope(actor),
+      where: customerScope(actor),
       select: CUSTOMER_SELECT,
       orderBy: { company: 'asc' },
     });
@@ -87,7 +90,7 @@ export class CustomersService {
 
   async findOne(actor: AuthUser, id: string) {
     const customer = await this.prisma.customer.findFirst({
-      where: { ...this.scope(actor), id },
+      where: { ...customerScope(actor), id },
       select: CUSTOMER_SELECT,
     });
     // 403 ki jagah 404, taaki dusron ke customers ka pata na chale.
@@ -98,6 +101,7 @@ export class CustomersService {
       select: NOTE_SELECT,
       orderBy: { createdAt: 'desc' },
     });
+
     const visits = await this.prisma.visit.findMany({
       where: { ...visitScope(actor), customerId: id },
       select: {
@@ -123,8 +127,19 @@ export class CustomersService {
     };
   }
 
+  /** Print karne ke liye signed QR payload. Sirf admin / manager (controller me). */
+  async qrPayload(actor: AuthUser, id: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { ...customerScope(actor), id },
+      select: { id: true },
+    });
+    if (!customer) throw new NotFoundException('Customer not found.');
+    return { payload: this.qr.payloadFor(customer.id) };
+  }
+
   async create(actor: AuthUser, dto: CreateCustomerDto) {
     this.assertManagedFields(actor, dto);
+    this.assertCoordinates(dto);
     const assignedToId = await this.resolveAssignee(actor, dto.assignedToId);
 
     const customer = await this.prisma.customer.create({
@@ -138,6 +153,8 @@ export class CustomersService {
         status: dto.status ?? 'NEW',
         highPriority: dto.highPriority ?? false,
         assignedToId,
+        latitude: dto.latitude ?? null,
+        longitude: dto.longitude ?? null,
       },
       select: CUSTOMER_SELECT,
     });
@@ -146,12 +163,13 @@ export class CustomersService {
 
   async update(actor: AuthUser, id: string, dto: UpdateCustomerDto) {
     const existing = await this.prisma.customer.findFirst({
-      where: { ...this.scope(actor), id },
+      where: { ...customerScope(actor), id },
       select: { id: true },
     });
     if (!existing) throw new NotFoundException('Customer not found.');
 
     this.assertManagedFields(actor, dto);
+    this.assertCoordinates(dto);
 
     const data: Prisma.CustomerUncheckedUpdateInput = {};
     if (dto.company !== undefined) data.company = dto.company;
@@ -161,6 +179,10 @@ export class CustomersService {
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.highPriority !== undefined) data.highPriority = dto.highPriority;
+    if (dto.latitude !== undefined && dto.longitude !== undefined) {
+      data.latitude = dto.latitude;
+      data.longitude = dto.longitude;
+    }
     if (dto.assignedToId !== undefined) {
       data.assignedToId = await this.resolveAssignee(actor, dto.assignedToId);
     }
@@ -175,7 +197,7 @@ export class CustomersService {
 
   async addNote(actor: AuthUser, customerId: string, text: string) {
     const customer = await this.prisma.customer.findFirst({
-      where: { ...this.scope(actor), id: customerId },
+      where: { ...customerScope(actor), id: customerId },
       select: { id: true },
     });
     if (!customer) throw new NotFoundException('Customer not found.');
@@ -187,24 +209,34 @@ export class CustomersService {
     return toNoteDto(note);
   }
 
-  /** Employee assignment, status aur priority nahi badal sakta. */
+  /** Employee assignment, status, priority aur location nahi badal sakta. */
   private assertManagedFields(
     actor: AuthUser,
     dto: {
       assignedToId?: string;
       status?: string;
       highPriority?: boolean;
+      latitude?: number;
+      longitude?: number;
     },
   ) {
     if (
       actor.role === 'EMPLOYEE' &&
       (dto.assignedToId !== undefined ||
         dto.status !== undefined ||
-        dto.highPriority !== undefined)
+        dto.highPriority !== undefined ||
+        dto.latitude !== undefined ||
+        dto.longitude !== undefined)
     ) {
       throw new ForbiddenException(
-        'Only managers and admins can change assignment, status or priority.',
+        'Only managers and admins can change assignment, status, priority or location.',
       );
+    }
+  }
+
+  private assertCoordinates(dto: { latitude?: number; longitude?: number }) {
+    if ((dto.latitude === undefined) !== (dto.longitude === undefined)) {
+      throw new BadRequestException('Send latitude and longitude together.');
     }
   }
 
