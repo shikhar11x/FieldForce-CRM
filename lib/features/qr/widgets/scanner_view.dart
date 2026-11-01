@@ -1,84 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
-/// Camera placeholder with a scanner frame. Phase 2 swaps the dark
-/// backdrop for a live camera preview and keeps the frame overlay.
+/// Camera ke upar scanner frame aur status. [child] live camera preview hai.
 class ScannerView extends StatelessWidget {
-  const ScannerView({super.key, this.busy = false});
+  const ScannerView({
+    super.key,
+    required this.child,
+    this.busy = false,
+    this.caption,
+  });
 
+  final Widget child;
   final bool busy;
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      height: 320,
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.lgAll,
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0B1020), Color(0xFF1A2038)],
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox.square(
-            dimension: 220,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size.square(220),
-                  painter: _FramePainter(color: Colors.white),
-                ),
-                if (busy)
-                  const CircularProgressIndicator(color: Colors.white)
-                else
-                  Positioned(
-                    left: 14,
-                    right: 14,
-                    top: 12,
-                    child: Container(
-                      height: 2,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryLight
-                                .withValues(alpha: 0.7),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                    )
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .moveY(
-                          begin: 0,
-                          end: 190,
-                          duration: 1600.ms,
-                          curve: Curves.easeInOut,
-                        ),
-                  ),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: AppSpacing.lg,
-            child: Text(
-              busy ? 'Verifying...' : 'Camera preview appears here',
-              style: textTheme.bodySmall?.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
+    return ClipRRect(
+      borderRadius: AppRadius.lgAll,
+      child: SizedBox(
+        height: 340,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: Colors.black, child: child),
+            Center(
+              child: CustomPaint(
+                size: const Size.square(220),
+                painter: _FramePainter(color: Colors.white),
               ),
             ),
-          ),
-        ],
+            if (busy)
+              ColoredBox(
+                color: Colors.black.withValues(alpha: 0.55),
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            if (caption != null)
+              Positioned(
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                bottom: AppSpacing.lg,
+                child: Text(
+                  caption!,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
